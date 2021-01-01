@@ -110,7 +110,8 @@ with YEDB('http://localhost:8870') as db:
 ### Building own client
 
 YEDB uses JSON RPC (https://www.jsonrpc.org/) as the API protocol. Any method,
-listed in yedb.server.METHODS can be called.
+listed in yedb.server.METHODS can be called. Payloads can be packed either with
+JSON or with MessagePack.
 
 ### Working with complicated data structures (embedded only)
 
