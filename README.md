@@ -46,7 +46,7 @@ pip3 install yedb
 
 # to use as embedded or client/server - go on. to use CLI - install additional
 # required libraries
-pip3 install icli neotermcolor rapidtables pyyaml tqdm
+pip3 install icli neotermcolor rapidtables pyyaml tqdm pygments
 
 # create a new database
 yedb /path/to/my/database
