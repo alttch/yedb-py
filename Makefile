@@ -28,5 +28,8 @@ test:
 
 	pytest -x ./test-main.py
 
+docs:
+	pydoc2rst doc/pydoc/tpl_yedb.rst doc/pydoc/yedb.rst /opt/yedb
+
 pub:
-	d test pub-pypi
+	d test docs pub-pypi
