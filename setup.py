@@ -1,4 +1,4 @@
-__version__ = '0.0.5'
+__version__ = '0.0.7'
 
 import setuptools
 
@@ -17,7 +17,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     license='Apache License 2.0',
-    install_requires=['msgpack', 'requests', 'portalocker'],
+    install_requires=['portalocker'],
     classifiers=(
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: Apache Software License',

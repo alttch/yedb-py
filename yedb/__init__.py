@@ -1,4 +1,4 @@
-__version__ = '0.0.5'
+__version__ = '0.0.7'
 
 DB_VERSION = 1
 
@@ -7,9 +7,6 @@ DEFAULT_FMT = 'json'
 DEFAULT_HTTP_TIMEOUT = 5
 
 FMTS = ['json', 'yaml', 'msgpack', 'cbor', 'pickle']
-
-# TODO pack to module
-# TODO doc
 
 import threading
 
