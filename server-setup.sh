@@ -30,7 +30,7 @@ done
 
 echo
 
-DIR_ME=$(realpath "$(dirname "$(realpath "$0")")")
+DIR_ME=$(pwd)
 
 [ -z "$PYTHON" ] && PYTHON=python3
 [ -z "$PIP" ] && PIP=pip3
