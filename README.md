@@ -16,14 +16,14 @@ power loss, unless the OS file system die. Keys data is saved in the very
 reliable way and immediately flushed to disk (this can be disabled to speed
 up the engine but is not recommended - why then YEDB is used for).
 
-YEDB database objects are absolutely thread-safe.
+* YEDB database objects are absolutely thread-safe.
 
-YEDB has built-in tools to automatically repair itself if any keys are broken.
+* YEDB has built-in tools to automatically repair itself if any keys are broken.
 
-YEDB has a cool CLI :)
+* YEDB has a cool CLI :)
 
-If the tools failed to help, YEDB can be easily repaired by a system
-administrator, using standard Linux tools.
+* If the tools failed to help, YEDB can be easily repaired by a system
+  administrator, using standard Linux tools.
 
 Practical usage:
 
