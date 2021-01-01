@@ -4,13 +4,17 @@ import yedb
 
 try:
     import icli
+    import neotermcolor
+    import rapidtables
+    import yaml
+    import tqdm
+    import pygments
 except:
     print('Please manually install required CLI modules:')
     print()
     print('  pip3 install icli neotermcolor rapidtables pyyaml tqdm pygments')
     print()
     raise
-import neotermcolor
 import sys
 import os
 from pathlib import Path
@@ -114,7 +118,6 @@ def convert_value_from(value, p):
         if value.strip() == '' or value is None:
             value = None
         else:
-            import yaml
             value = yaml.safe_load(value)
     return value
 
@@ -345,7 +348,6 @@ def dispatcher(cmd, **kwargs):
 
             pretty_print_table(sorted(data, key=lambda k: k['name']))
         elif cmd == 'edit':
-            import yaml
             import random
             import tempfile
             key = kwargs.get('KEY')
