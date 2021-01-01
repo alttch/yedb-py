@@ -3,7 +3,7 @@
 YEDB_VERSION=0.0.30
 
 REQUIRED="realpath python3 curl"
-MODS="yedb==${YEDB_VERSION} msgpack==1.0.2 cherrypy==17.4.1"
+MODS="yedb==${YEDB_VERSION} msgpack==1.0.2 aiohttp=3.7.3"
 
 MODS_CLIENT="icli neotermcolor rapidtables pyyaml tqdm pygments requests==2.21.0"
 
@@ -63,7 +63,7 @@ chmod 700 "$DIR_ME/var" || exit 5
 cat > "$DIR_ME/yedb-server" << EOF
 #!/bin/sh
 
-"$DIR_ME/venv/bin/python3" -m yedb.server \\
+"$DIR_ME/venv/bin/python3" -m yedb.async_server \\
 --pid-file "$DIR_ME/var/yedbd.pid" --threads $YEDBD_THREADS \\
 --host $YEDBD_HOST --port $YEDBD_PORT \\
 --default-fmt msgpack "$DIR_ME/var/db"

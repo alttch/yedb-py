@@ -99,13 +99,22 @@ finally:
 
 ## Client/server
 
-(Requires manually installing "cherrypy" Python module)
+### Classic threaded server
 
-### Start a server
+(Requires manually installing "cherrypy" Python module)
 
 ```shell
 # listen to localhost:8870 (default)
 python3 -m yedb.server /path/to/db
+```
+
+### Async server
+
+(Requires manually installing "aiohttp" Python module)
+
+```shell
+# listen to localhost:8870 (default)
+python3 -m yedb.async_server /path/to/db
 ```
 
 ### Connect a client

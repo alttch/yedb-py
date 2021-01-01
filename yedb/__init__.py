@@ -201,14 +201,14 @@ class YEDB():
             self._flock_fh = None
             self.lock_file = (self.db / 'db.lock').absolute()
             self.meta_file = (self.db / '.yedb').absolute()
-            self.safe_write = True
+            self.write_modified_only = True
             self.auto_flush = True
             self.lock_ex = True
             self.force_native_json = False
             self._parse_options(kwargs)
 
     def _parse_options(self, options):
-        for o in ['safe_write', 'auto_flush', 'lock_ex']:
+        for o in ['write_modified_only', 'auto_flush', 'lock_ex']:
             try:
                 val = options[o]
                 if val is not None:
@@ -219,7 +219,6 @@ class YEDB():
     def _init_db(self):
         self.dbinfo = {
             'lock_ex': self.lock_ex,
-            'safe_write': self.safe_write,
             'auto_flush': self.auto_flush,
             'path': Path(self.db),
         }
@@ -408,7 +407,7 @@ class YEDB():
                                             default_fmt=new_fmt,
                                             default_checksums=checksums)
                     new_db.open(lock_ex=False,
-                                safe_write=False,
+                                write_modified_only=False,
                                 auto_flush=False,
                                 _skip_meta=True)
                     new_db.checksums = True if checksums or \
@@ -459,8 +458,6 @@ class YEDB():
             timeout: max open timeout
             auto_create: automatically create db
             auto_repair: automatically repair db
-            safe_write: perform safe writes (check key and write file only if
-                the key is changed)
             auto_flush: always flush written data to disk
             lock_ex: lock database exclusively, so no other thread/process can
                 open it (requires "portalocker" module)
@@ -596,7 +593,7 @@ class YEDB():
                 keydir = self.db / keypath
                 keydir.mkdir(exist_ok=True, parents=True)
                 key_file = keydir / (keyn + self.suffix)
-                if self.safe_write:
+                if self.write_modified_only:
                     try:
                         if self.get(name) == value:
                             if debug:
@@ -1241,7 +1238,7 @@ class KeyDict:
 
     def close(self, _write=True):
         if _write and self._changed:
-            if not self.db.safe_write or self.db.get(self.key_name,
+            if not self.db.write_modified_only or self.db.get(self.key_name,
                                                      {}) != self.data:
                 if debug:
                     logger.debug(f'requesting to update {self.key_name}')
@@ -1318,7 +1315,7 @@ class KeyList:
 
     def close(self, _write=True):
         if _write and self._changed:
-            if not self.db.safe_write or self.db.get(self.key_name,
+            if not self.db.write_modified_only or self.db.get(self.key_name,
                                                      {}) != self.data:
                 if debug:
                     logger.debug(f'requesting to update {self.key_name}')

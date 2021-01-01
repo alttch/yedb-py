@@ -611,7 +611,6 @@ def cli():
 
     if not need_launch:
         ap_reopen = sp.add_parser('reopen', help='Reconnect')
-        ap_reopen.add_argument('-s', '--safe-write', action='store_true')
         ap_reopen.add_argument('-f', '--auto-flush', action='store_true')
 
     ap_purge = sp.add_parser('purge', help='Purge database')
