@@ -361,6 +361,7 @@ class YEDB():
             raise RuntimeError('database is not opened')
         with self.lock:
             d = self.dbinfo.copy()
+            d['repair_recommended'] = self.repair_recommended
             try:
                 d.update(self.meta_info.copy())
             except:
@@ -459,10 +460,6 @@ class YEDB():
             auto_flush: always flush written data to disk
             lock_ex: lock database exclusively, so no other thread/process can
                 open it (requires "portalocker" module)
-        Returns:
-            True if db is opened, False if db is opened, but it has not been
-            closed correctly during the previous session, repair is recommended
-            (unless auto-repaired)
         Raises:
             TimeoutError: database lock timeout
             ModuleNotFoundError: missing Python module for the chosen format
@@ -503,13 +500,13 @@ class YEDB():
                     self._init_meta()
                     self._write_meta()
 
-            result = True
+            self.repair_recommended = False
 
             if (self.lock_ex and not _skip_lock) or _force_lock_ex:
                 if debug:
                     logger.debug(f'locking database')
                 if self.lock_file.exists():
-                    result = False
+                    self.repair_recommended = True
                 self._lock_db(timeout=timeout)
 
             self._opened = True
@@ -521,12 +518,10 @@ class YEDB():
             if self.auto_flush:
                 self._sync_dirs([self.db])
 
-            if not result:
+            if self.repair_recommended:
                 logger.warning(f'DB {self.db} has not been closed correctly')
                 if auto_repair or self.auto_repair:
-                    result = self.do_repair()
-
-            return result
+                    self.do_repair()
 
     def _lock_db(self, timeout=None):
         import portalocker
@@ -980,6 +975,7 @@ class YEDB():
         if purge_after:
             for key in self.purge():
                 yield (key, False)
+        self.repair_recommended = False
 
     def purge(self, keep_broken=False, flush=False):
         """

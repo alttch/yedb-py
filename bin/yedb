@@ -182,7 +182,8 @@ try:
     if db_path and not str(db_path).startswith('-'):
         del sys.argv[1]
         db = yedb.YEDB(db_path, default_fmt=fmt, **options)
-        if not db.open():
+        db.open()
+        if db.info()['repair_recommended']:
             print_warn(
                 'database has not been closed correctly, repair is recommended')
 except Exception as e:

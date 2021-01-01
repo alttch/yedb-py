@@ -260,10 +260,6 @@
       :param lock_ex: lock database exclusively, so no other thread/process can
                       open it (requires "portalocker" module)
       
-      :returns: True if db is opened, False if db is opened, but it has not been
-                closed correctly during the previous session, repair is recommended
-                (unless auto-repaired)
-      
       :raises TimeoutError: database lock timeout
       :raises ModuleNotFoundError: missing Python module for the chosen format
       :raises ValueError: Unsupported format chosen
