@@ -31,7 +31,6 @@ done
 echo
 
 DIR_ME=$(pwd)
-echo $DIR_ME
 
 [ -z "$PYTHON" ] && PYTHON=python3
 [ -z "$PIP" ] && PIP=pip3
