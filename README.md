@@ -44,6 +44,10 @@ rugged key-value data storage. We use it a lot and hope you'll like it too.
 # install YEDB
 pip3 install yedb
 
+# to use as embedded or client/server - go on. to use CLI - install additional
+# required libraries
+pip3 install icli neotermcolor rapidtables pyyaml tqdm
+
 # create a new database
 yedb /path/to/my/database
 
@@ -52,6 +56,7 @@ yedb set key1 value1
 # get key value
 yedb get key1
 # go interactive
+# launch the client
 yedb
 ```
 
@@ -120,7 +125,8 @@ automatically if present)
 
 Other possible formats and their benefits:
 
-* YAML - slow, but key files are more human-readable and editable
+* YAML - (requires manually installing "pyyaml" Python module) slow, but key
+  files are more human-readable and editable
 
 * msgpack - (requires manually installing "msgpack" Python module). Fast,
   reliable binary serialization format. If used, keys can hold binary values as

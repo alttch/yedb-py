@@ -1,4 +1,4 @@
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 import setuptools
 
@@ -17,16 +17,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     license='Apache License 2.0',
-    install_requires=[
-        'icli',
-        'msgpack',
-        'requests',
-        'neotermcolor',
-        'portalocker',
-        'rapidtables',
-        'pyyaml',
-        'tqdm',
-    ],
+    install_requires=['msgpack', 'requests', 'portalocker'],
     classifiers=(
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: Apache Software License',
