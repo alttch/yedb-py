@@ -1,4 +1,4 @@
-__version__ = '0.0.11'
+__version__ = '0.0.12'
 
 DB_VERSION = 1
 
@@ -296,10 +296,13 @@ class YEDB():
         with f.open(self.write_mode) as fh:
             fh.write(data)
             if flush or self.auto_flush:
+                if debug:
+                    logger.debug(f'flushing key file {f}')
                 fh.flush()
                 os.fsync(fh.fileno())
             f.rename(orig_file)
-            self._sync_dirs([f.parent])
+            if flush or self.auto_flush:
+                self._sync_dirs([f.parent])
 
     @staticmethod
     def _sync_dirs(dirs):
