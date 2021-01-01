@@ -1,4 +1,4 @@
-__version__ = '0.0.21'
+__version__ = '0.0.22'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
@@ -184,8 +184,15 @@ def start(host='127.0.0.1',
         cherrypy.engine.start()
         logger.info(f'YEDB server started at {host}:{port} '
                     f'({threads} threads), DB: {dboptions["dbpath"]}')
-        Path(PID_FILE).write_text(str(os.getpid()))
-        cherrypy.engine.block()
+        p = Path(pid_file)
+        try:
+            p.write_text(str(os.getpid()))
+            cherrypy.engine.block()
+        finally:
+            try:
+                p.unlink()
+            except FileNotFoundError:
+                pass
 
 
 if __name__ == '__main__':
