@@ -9,7 +9,7 @@ MODS_CLIENT="icli neotermcolor rapidtables pyyaml tqdm pygments requests==2.21.0
 
 [ -z "$YEDBD_HOST" ] && YEDBD_HOST=127.0.0.1
 [ -z "$YEDBD_PORT" ] && YEDBD_PORT=8870
-[ -z "$YEDBD_THREADS" ] && YEDBD_THREADS=5
+[ -z "$YEDBD_THREADS" ] && YEDBD_THREADS=20
 
 check_required_exec() {
   p=$1
