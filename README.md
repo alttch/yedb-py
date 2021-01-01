@@ -74,7 +74,6 @@ Use env to specify extra options:
 
 * YEDBD\_HOST - override bind host
 * YEDBD\_PORT - override bind port
-* YEDBD\_THREADS - override thread count
 * PIP\_EXTRA\_OPTIONS - specify pip extra options
 * PYTHON - override Python path
 * PIP - override pip path

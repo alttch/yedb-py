@@ -9,7 +9,6 @@ MODS_CLIENT="icli neotermcolor rapidtables pyyaml tqdm pygments requests==2.21.0
 
 [ -z "$YEDBD_HOST" ] && YEDBD_HOST=127.0.0.1
 [ -z "$YEDBD_PORT" ] && YEDBD_PORT=8870
-[ -z "$YEDBD_THREADS" ] && YEDBD_THREADS=20
 
 check_required_exec() {
   p=$1
@@ -64,8 +63,7 @@ cat > "$DIR_ME/yedb-server" << EOF
 #!/bin/sh
 
 "$DIR_ME/venv/bin/python3" -m yedb.async_server \\
---pid-file "$DIR_ME/var/yedbd.pid" --threads $YEDBD_THREADS \\
---host $YEDBD_HOST --port $YEDBD_PORT \\
+--pid-file "$DIR_ME/var/yedbd.pid" --host $YEDBD_HOST --port $YEDBD_PORT \\
 --default-fmt msgpack "$DIR_ME/var/db"
 EOF
 )|| exit 6
