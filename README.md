@@ -32,7 +32,7 @@ Practical usage:
 * Turn the power switch off
 
 * Boot the machine again. The typical result: the latest saved key isn't
-  survived, but the database is still valid and working. In 99% cases, the
+  survived, but the database is still valid and working. In 99% of cases, the
   latest key can be automatically restored with built-in repair tools.
 
 We created YEDB to use in our embedded products as config registry trees and
