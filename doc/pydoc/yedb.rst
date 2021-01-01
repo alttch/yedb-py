@@ -118,7 +118,7 @@
    :param http_auth: auth type (basic or digest)
    
    
-   .. py:method:: YEDB.__enter__(*args, auto_repair=False, **kwargs)
+   .. py:method:: YEDB.__enter__(*args, **kwargs)
       :module: yedb
    
       :raises TimeoutError:
@@ -163,6 +163,14 @@
       
       :param key: key name
       :param recursive: also delete subkeys
+      
+   
+   .. py:method:: YEDB.do_repair()
+      :module: yedb
+   
+      One-shot auto repair
+      
+      Calls repair and logs the details
       
    
    .. py:method:: YEDB.explain(key)
@@ -236,11 +244,12 @@
                 generator into a list
       
    
-   .. py:method:: YEDB.open(timeout=None, auto_create=True, _skip_lock=False, _force_lock_ex=False, _skip_meta=False, **kwargs)
+   .. py:method:: YEDB.open(timeout=None, auto_create=True, auto_repair=False, _skip_lock=False, _force_lock_ex=False, _skip_meta=False, **kwargs)
       :module: yedb
    
       :param timeout: max open timeout
       :param auto_create: automatically create db
+      :param auto_repair: automatically repair db
       :param safe_write: perform safe writes (check key and write file only if
                          the key is changed)
       :param auto_flush: always flush written data to disk
@@ -249,6 +258,7 @@
       
       :returns: True if db is opened, False if db is opened, but it has not been
                 closed correctly during the previous session, repair is recommended
+                (unless auto-repaired)
       
       :raises TimeoutError: database lock timeout
       :raises ModuleNotFoundError: missing Python module for the chosen format
