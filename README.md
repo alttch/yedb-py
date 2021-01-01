@@ -154,7 +154,7 @@ For text engine formats (json, yaml):
 
 If database checksums are not used, keys are stored in the chosen serialization
 format as-is. This can give benefits to easily manage / repair keys manually,
-but looses data reliability, key set time (file mtime can still be used) and
+but loses data reliability, key set time (file mtime can still be used) and
 using built-in repair tools.
 
 ## TODO
