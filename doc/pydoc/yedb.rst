@@ -254,8 +254,6 @@
       :param timeout: max open timeout
       :param auto_create: automatically create db
       :param auto_repair: automatically repair db
-      :param safe_write: perform safe writes (check key and write file only if
-                         the key is changed)
       :param auto_flush: always flush written data to disk
       :param lock_ex: lock database exclusively, so no other thread/process can
                       open it (requires "portalocker" module)
