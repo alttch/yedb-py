@@ -2,7 +2,14 @@
 
 import yedb
 
-import icli
+try:
+    import icli
+except:
+    print('Please manually install required CLI modules:')
+    print()
+    print('  pip3 install icli neotermcolor rapidtables pyyaml tqdm pygments')
+    print()
+    raise
 import neotermcolor
 import sys
 import os
