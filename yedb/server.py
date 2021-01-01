@@ -24,11 +24,11 @@ else:
 root_logger = logging.getLogger()
 logger.handlers.clear()
 handler = SysLogHandler(address='/dev/log')
-formatter = logging.Formatter(f'%(levelname)s yadb.server %(message)s')
+formatter = logging.Formatter(f'%(levelname)s yedb.server %(message)s')
 handler.setFormatter(formatter)
 logger.handlers.append(handler)
 formatter = logging.Formatter(f'%(asctime)s {platform.node()} %(levelname)s '
-                              'yadb.server %(message)s')
+                              'yedb.server %(message)s')
 for h in root_logger.handlers:
     h.setFormatter(formatter)
 
