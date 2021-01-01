@@ -352,11 +352,15 @@ def dispatcher(cmd, **kwargs):
             import random
             import tempfile
             key = kwargs.get('KEY')
-            value = db.get(key=key)
+            try:
+                value = db.get(key=key)
+            except KeyError:
+                value = ''
             editor = os.getenv('EDITOR', 'vi')
             tmpfile = Path(
                 f'{tempfile.gettempdir()}/{random.randint(0,100000)}.tmp.yaml')
-            tmpfile.write_text(yaml.dump(value, default_flow_style=False))
+            tmpfile.write_text('' if value == '' else yaml.
+                               dump(value, default_flow_style=False))
             try:
                 while True:
                     code = os.system(f'{editor} {tmpfile}')
