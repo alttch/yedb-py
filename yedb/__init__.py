@@ -77,15 +77,14 @@ class YEDB():
         if debug:
             logger.debug(f'JRPC ({"msgpack" if use_msgpack else "json"}) '
                          f'{self.db} method={method} auth={self.http_auth}')
-        # according to tests, session is 3x slower than singles
-        # try:
-        # post = g.session.post
-        # except AttributeError:
-        # import requests
-        # session = requests.Session()
-        # g.session = session
-        # post = session.post
-        from requests import post
+        try:
+            post = g.session.post
+        except AttributeError:
+            import requests
+            session = requests.Session()
+            g.session = session
+            post = session.post
+        # from requests import post
         r = post(self.db,
                  data=data,
                  headers=headers,
