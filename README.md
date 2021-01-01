@@ -20,6 +20,8 @@ YEDB database objects are absolutely thread-safe.
 
 YEDB has built-in tools to automatically repair itself if any keys are broken.
 
+YEDB has a cool CLI :)
+
 If the tools failed to help, YEDB can be easily repaired by a system
 administrator, using standard Linux tools.
 
