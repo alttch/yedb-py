@@ -1,4 +1,4 @@
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 DB_VERSION = 1
 
@@ -344,6 +344,8 @@ class YEDB():
             return s
 
     def info(self):
+        if not self._opened:
+            raise RuntimeError('database is not opened')
         with self.lock:
             d = self.dbinfo.copy()
             try:
