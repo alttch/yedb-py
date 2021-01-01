@@ -31,5 +31,4 @@ test:
 docs:
 	pydoc2rst doc/pydoc/tpl_yedb.rst doc/pydoc/yedb.rst /opt/yedb
 
-pub:
-	d test docs pub-pypi
+pub: d test docs pub-pypi
