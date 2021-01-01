@@ -299,6 +299,19 @@ class YEDB():
                 fh.flush()
                 os.fsync(fh.fileno())
             f.rename(orig_file)
+            self._sync_dirs([f.parent])
+
+    @staticmethod
+    def _sync_dirs(dirs):
+        for d in dirs:
+            if debug:
+                logger.debug(f'syncing dir {d}')
+            try:
+                dirfd = os.open(d, os.O_DIRECTORY | os.O_RDONLY)
+                os.fsync(dirfd)
+                os.close(dirfd)
+            except FileNotFoundError:
+                pass
 
     def _calc_digest(self, s):
         from hashlib import sha256
@@ -499,6 +512,8 @@ class YEDB():
                 for k, v in self.info().items():
                     logger.debug(f'{self.db.name}.{k}={v}')
 
+            if self.auto_flush:
+                self._sync_dirs([self.db])
             return result
 
     def _lock_db(self, timeout=None):
@@ -527,6 +542,8 @@ class YEDB():
                 except FileNotFoundError:
                     pass
             self._opened = False
+            if self.auto_flush:
+                self._sync_dirs([self.db])
 
     def __enter__(self, *args, auto_repair=False, **kwargs):
         """
@@ -598,7 +615,7 @@ class YEDB():
                         pass
                 self._write(key_file,
                             self._dump_value(value, stime=stime),
-                            flush=flush)
+                            flush=flush or self.auto_flush)
 
     def copy(self, key, dst_key, delete=False):
         """
@@ -612,7 +629,7 @@ class YEDB():
             if delete:
                 self.delete(key)
 
-    def rename(self, key, dst_key):
+    def rename(self, key, dst_key, flush=False):
         """
         Rename key or category to new
         """
@@ -656,18 +673,24 @@ class YEDB():
                     try:
                         key_file.rename(dst_key_file)
                         renamed = True
+                        if flush or self.auto_flush:
+                            self._sync_dirs(
+                                {key_file.parent, dst_key_file.parent})
                     except FileNotFoundError:
                         pass
 
                     # rename dir if exists
+                    d = key_file.with_suffix('')
+                    dst_d = dst_key_file.with_suffix('')
                     try:
-                        (key_file.with_suffix('')).rename(
-                            dst_key_file.with_suffix(''))
+                        d.rename(dst_d)
+                        if flush or self.auto_flush:
+                            self._sync_dirs({d.parent, dst_d.parent})
                     except FileNotFoundError:
                         if not renamed:
                             raise KeyError(f'Key/category not found {key}')
             # remove empty dirs if exist
-            self.delete(key)
+            self.delete(key, _dir_only=True)
 
     def key_exists(self, key):
         """
@@ -815,7 +838,12 @@ class YEDB():
             key_file = keydir / (keyn + self.suffix)
             return KeyList(name, key_file, l, self)
 
-    def delete(self, key, recursive=False, flush=False):
+    def delete(self,
+               key,
+               recursive=False,
+               flush=False,
+               _no_flush=False,
+               _dir_only=False):
         """
         Deletes key
 
@@ -826,8 +854,11 @@ class YEDB():
         if not self._opened:
             raise RuntimeError('database is not opened')
         name = self._fmt_key(key)
+        if name == '':
+            return
         if debug:
             logger.debug(f'deleting key {name}')
+        dts = set()
         with self.lock:
             try:
                 l = self._key_locks[name]
@@ -835,22 +866,27 @@ class YEDB():
                 l = threading.RLock()
                 self._key_locks[name] = l
             with l:
-                if (self.db / name).is_dir() and recursive:
-                    self._delete_subkeys(name)
+                dn = self.db / name
+                if dn.is_dir() and recursive:
+                    self._delete_subkeys(name, flush=False)
+                    dts.add(dn.parent)
                 keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
                                                                          name)
                 keydir = self.db / keypath
                 key_file = keydir / (keyn + self.suffix)
-                try:
-                    if flush or self.auto_flush:
-                        with key_file.open('wb') as fh:
-                            fh.flush()
-                            os.fsync(fh.fileno())
-                    if debug:
-                        logger.debug(f'deleting key file {key_file}')
-                    key_file.unlink()
-                except FileNotFoundError:
-                    pass
+                if not _dir_only:
+                    try:
+                        if (flush or self.auto_flush) and not _no_flush:
+                            with key_file.open('wb') as fh:
+                                fh.flush()
+                                os.fsync(fh.fileno())
+                        if debug:
+                            logger.debug(f'deleting key file {key_file}')
+                        key_file.unlink()
+                        if (flush or self.auto_flush) and not _no_flush:
+                            dts.add(key_file.parent)
+                    except FileNotFoundError:
+                        pass
                 try:
                     del self._key_locks[name]
                 except KeyError:
@@ -860,18 +896,22 @@ class YEDB():
                         break
                     try:
                         p.rmdir()
+                        if flush or self.auto_flush:
+                            dts.add(p.parent)
                     except OSError:
                         pass
+                if (flush or self.auto_flush) and not _no_flush:
+                    self._sync_dirs(dts)
 
-    def clear(self):
+    def clear(self, flush=False):
         """
         Clears database (removes everything)
         """
         if debug:
             logger.debug(f'CLEAR operation requested')
-        self._delete_subkeys()
+        self._delete_subkeys(flush=flush or self.auto_flush)
 
-    def repair(self, purge_after=True):
+    def repair(self, purge_after=True, flush=False):
         """
         Repairs database
 
@@ -894,6 +934,7 @@ class YEDB():
             raise RuntimeError(
                 'checksums are not enabled, repairing is not possible')
         # repair
+        dts = set()
         with self.lock:
             # find possible valid keys
             for d in self.db.glob('**/*.tmp'):
@@ -908,13 +949,17 @@ class YEDB():
                         logger.debug(f'broken key file found: {d}')
                     d.unlink()
                     result = False
+                if flush or self.auto_flush:
+                    dts.add(d.parent)
                 yield (str(d)[self._dbpath_len:-4], result)
+            if flush or self.auto_flush:
+                self._sync_dirs(dts)
         # purge
         if purge_after:
             for key in self.purge():
                 yield (key, False)
 
-    def purge(self, keep_broken=False):
+    def purge(self, keep_broken=False, flush=False):
         """
         Purges empty directories
 
@@ -936,6 +981,7 @@ class YEDB():
         if debug:
             logger.debug(
                 f'purge operation requested, keep_broken: {keep_broken}')
+        dts = set()
         with self.lock:
             # clean up files
             for d in self.db.glob('**/*'):
@@ -944,6 +990,8 @@ class YEDB():
                     if debug:
                         logger.debug(f'deleting non-necessary file {d}')
                     d.unlink()
+                    if flush or self.auto_flush:
+                        dts.add(d.parent)
                 elif d.suffix == self.suffix and not keep_broken:
                     try:
                         self._load_value(self.read(d))
@@ -952,13 +1000,19 @@ class YEDB():
                             logger.debug(f'broken key file found: {d}')
                         yield str(d)[self._dbpath_len:-self._suffix_len]
                         d.unlink()
+                        if flush or self.auto_flush:
+                            dts.add(d.parent)
             # clean up directories
             for d in reversed(list((self.db.glob('**')))):
                 if d.is_dir():
                     try:
                         d.rmdir()
+                        if flush or self.auto_flush:
+                            dts.add(d.parent)
                     except OSError:
                         pass
+            if flush or self.auto_flush:
+                self._sync_dirs(dts)
 
     def check(self):
         """
@@ -1006,11 +1060,12 @@ class YEDB():
                                                _dbpath_len:-self._suffix_len]
                 yield name
 
-    def _delete_subkeys(self, name=''):
+    def _delete_subkeys(self, name='', flush=False):
         if not self._opened:
             raise RuntimeError('database is not opened')
         name = self._fmt_key(name)
         import shutil
+        dts = set()
         with self.lock:
             if name:
                 path = self.db / name
@@ -1018,7 +1073,7 @@ class YEDB():
                 path = self.db
             try:
                 for k in reversed(sorted(self.list_subkeys(name))):
-                    self.delete(k)
+                    self.delete(k, _no_flush=True)
                     try:
                         del self._key_locks[k]
                     except KeyError:
@@ -1028,11 +1083,17 @@ class YEDB():
                         if debug:
                             logger.debug(f'deleting directory {d}')
                         shutil.rmtree(d)
+                        if flush:
+                            dts.add(d.parent)
                     else:
                         if d.absolute() not in [self.lock_file, self.meta_file]:
                             if debug:
                                 logger.debug(f'deleting file {d}')
                             d.unlink()
+                            if flush:
+                                dts.add(d.parent)
+                if flush or self.auto_flush:
+                    self._sync_dirs(dts)
             except FileNotFoundError:
                 pass
 

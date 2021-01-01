@@ -489,7 +489,7 @@ def dispatcher(cmd, **kwargs):
         elif cmd == 'benchmark':
             db.delete(key='.benchmark', recursive=True)
             import time
-            iters = 1000 if remote else 10000
+            iters = 1000
             test_arr = [777.777] * 100
             test_dict = {f'v{n}': n * 777.777 for n in range(100)}
             for n, v in [('numeric', 777.777), ('string', 'x' * 1000),

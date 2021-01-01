@@ -26,7 +26,7 @@ pub-pypi:
 
 test:
 
-	pytest -x ./test-main.py
+	pytest -x -v -v ./test-main.py
 
 docs:
 	pydoc2rst doc/pydoc/tpl_yedb.rst doc/pydoc/yedb.rst /opt/yedb

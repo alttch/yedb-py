@@ -171,6 +171,14 @@ format as-is. This can give benefits to easily manage / repair keys manually,
 but loses data reliability, key set time (file mtime can still be used) and
 using built-in repair tools.
 
+## Debugging
+
+Start client/server with DEBUG=1 env variable:
+
+```shell
+DEBUG=1 yedb /path/to/db
+```
+
 ## Module documentation
 
 https://yedb.readthedocs.io/
