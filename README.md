@@ -9,19 +9,22 @@
 - No
 
 - So what is YEDB for?
-- YEDB is reliable, thread-safe and very easy to use
+- YEDB is ultra-reliable, thread-safe and very easy to use.
 
-* YEDB is absolutely reliable rugged key-value database, which can survive in
-  any power loss, unless the OS file system die. Keys data is saved in the very
-  reliable way and immediately flushed to disk (this can be disabled to speed
-  up the engine but is not recommended - why then YEDB is used for).
+YEDB is absolutely reliable rugged key-value database, which can survive in any
+power loss, unless the OS file system die. Keys data is saved in the very
+reliable way and immediately flushed to disk (this can be disabled to speed
+up the engine but is not recommended - why then YEDB is used for).
 
-* YEDB has built-in tools to repair itself is any keys are broken
+YEDB has built-in tools to repair itself is any keys are broken.
 
-* YEDB database objects are absolutely thread-safe
+YEDB database objects are absolutely thread-safe.
 
-* If the tools failed to help, YEDB can be easily repaired by a system
-* administrator, using standard Linux tools.
+If the tools failed to help, YEDB can be easily repaired by a system
+administrator, using standard Linux tools.
+
+We created YEDB to use in our embedded products as config registry trees and
+rugged key-value data storage. We use it a lot and hope you'll like it too.
 
 ## Quick start
 
@@ -142,3 +145,8 @@ If database checksums are not used, keys are stored in the chosen serialization
 format as-is. This can give benefits to easily manage / repair keys manually,
 but looses data reliability, key set time (file mtime can still be used) and
 using built-in repair tools.
+
+## TODO
+
+* Rust library
+* Client/server complicated data structures
