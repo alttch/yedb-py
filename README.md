@@ -104,7 +104,7 @@ manually)
 from yedb import YEDB
 
 with YEDB('http://localhost:8870') as db:
-    # do some stuff
+    # do some stuff, remember to send all parameters as kwargs
 ```
 
 ### Building own client
