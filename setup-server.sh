@@ -53,8 +53,8 @@ if [ "$NEED_PIP" = "1" ]; then
   (curl https://bootstrap.pypa.io/get-pip.py | "$DIR_ME/venv/bin/python") || exit 3
 fi
 
-"$DIR_ME/venv/bin/pip3" install -U $MODS || exit 4
-"$DIR_ME/venv/bin/pip3" install -U $MODS_CLIENT || exit 4
+"$DIR_ME/venv/bin/pip3" install -U $MODS $PIP_EXTRA_OPTIONS || exit 4
+"$DIR_ME/venv/bin/pip3" install -U $MODS_CLIENT $PIP_EXTRA_OPTIONS || exit 4
 
 mkdir -p "$DIR_ME/var" || exit 5
 chmod 700 "$DIR_ME/var" || exit 5
