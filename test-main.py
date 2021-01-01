@@ -43,7 +43,7 @@ class Server:
 
     def __enter__(self):
         if self.is_server:
-            uri = 'http://localhost:8870'
+            uri = 'http://localhost:8879'
             with YEDB(uri) as db:
                 db.delete(key='/', recursive=True)
             return uri
@@ -57,7 +57,8 @@ class Server:
 @pytest.fixture(scope='module', autouse=True)
 def manage():
     _d.p = subprocess.Popen(
-        f'python3 -m yedb.server {SERVER_DB_PATH} --default-fmt msgpack',
+        f'python3 -m yedb.server {SERVER_DB_PATH} '
+        '-P 8879 --default-fmt msgpack',
         shell=True)
     time.sleep(0.5)
     yield
