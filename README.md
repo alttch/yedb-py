@@ -104,8 +104,9 @@ with YEDB('http://localhost:8870') as db:
         key.set('field', 'value')
     # If modified, the key is automatically saved at the end of the statement.
 
-Note: key objects are thread-unsafe.
 ```
+
+Note: key objects are thread-unsafe.
 
 ## Engine formats
 
