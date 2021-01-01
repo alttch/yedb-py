@@ -54,17 +54,29 @@ pip3 install yedb
 # required libraries
 pip3 install icli neotermcolor rapidtables pyyaml tqdm pygments
 
-# create a new database
+# create a new database and go interactive
 yedb /path/to/my/database
 
-# set the first key
+# set a key
 yedb set key1 value1
-# get key value
+# get the key value
 yedb get key1
-# go interactive
-# launch the client
-yedb
 ```
+
+## Quick client-server setup
+
+```
+curl https://raw.githubusercontent.com/alttch/yedb/main/server-setup.sh | sudo sh
+```
+
+Use env to specify extra options:
+
+* YEDBD\_HOST - override bind host
+* YEDBD\_PORT - override bind port
+* YEDBD\_THREADS - override thread count
+* PIP\_EXTRA\_OPTIONS - specify pip extra options
+* PYTHON - override Python path
+* PIP - override pip path
 
 ## Embedding
 
