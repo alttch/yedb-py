@@ -127,24 +127,24 @@ class API:
                 if method not in METHODS:
                     raise MethodNotFound
                 elif method == 'test':
-                    result = dict(name='yedb', version=__version__)
+                    res = dict(name='yedb', version=__version__)
                 else:
-                    result = getattr(self.db, method)(**p)
-                if isinstance(result, GeneratorType):
-                    result = list(result)
+                    res = getattr(self.db, method)(**p)
+                if isinstance(res, GeneratorType):
+                    res = list(res)
                 elif method == 'explain':
-                    i = result['info']
-                    del result['info']
-                    result['mtime'] = i.st_mtime
-                    result['size'] = i.st_size
-                    result['sha256'] = result['sha256'].hex()
+                    i = res['info']
+                    del res['info']
+                    res['mtime'] = i.st_mtime
+                    res['size'] = i.st_size
+                    res['sha256'] = res['sha256'].hex()
                 elif method == 'info':
-                    result['host'] = f'{r.local.name}:{r.local.port}'
-                if result is None and method != 'get':
-                    result = True
+                    res['host'] = f'{r.local.name}:{r.local.port}'
+                if res is None and method != 'get':
+                    res = True
                 else:
-                    result = safe_serialize(result)
-                r = {'jsonrpc': '2.0', 'result': result, 'id': req_id}
+                    res = safe_serialize(res)
+                r = {'jsonrpc': '2.0', 'result': res, 'id': req_id}
             except InvalidRequest:
                 r = format_error(-32600, 'Invalid request')
             except MethodNotFound:
@@ -164,11 +164,15 @@ class API:
                     result.append(r)
                 else:
                     result = r
-        cherrypy.response.headers['Content-Type'] = ct
-        if req == REQ_MSGPACK:
-            return msgpack.dumps(result)
-        elif req == REQ_JSON:
-            return json.dumps(result).encode()
+        if result:
+            cherrypy.response.headers['Content-Type'] = ct
+            if req == REQ_MSGPACK:
+                return msgpack.dumps(result)
+            elif req == REQ_JSON:
+                return json.dumps(result).encode()
+        else:
+            cherrypy.response.status = 204
+            return
 
 
 def start(host='127.0.0.1',
