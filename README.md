@@ -38,6 +38,9 @@ Practical usage:
 We created YEDB to use in our embedded products as config registry trees and
 rugged key-value data storage. We use it a lot and hope you'll like it too.
 
+Note: YEDB is good on SSDs and SD cards. As it immediately syncs all the data
+written, it can work on classic HDDs really slowly.
+
 ## Quick start
 
 ```shell
