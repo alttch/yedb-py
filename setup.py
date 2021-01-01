@@ -1,4 +1,4 @@
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 import setuptools
 
@@ -21,7 +21,6 @@ setuptools.setup(
         'icli',
         'msgpack',
         'requests',
-        'cherrypy',
         'neotermcolor',
         'portalocker',
         'rapidtables',

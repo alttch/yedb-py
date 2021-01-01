@@ -75,6 +75,8 @@ finally:
 
 ## Client/server
 
+(Requires manually installing "cherrypy" Python module)
+
 ### Start a server
 
 ```shell
@@ -120,10 +122,11 @@ Other possible formats and their benefits:
 
 * YAML - slow, but key files are more human-readable and editable
 
-* msgpack - (requires manually installing "msgpack" module). Fast, reliable
-  binary serialization format. If used, keys can hold binary values as well.
+* msgpack - (requires manually installing "msgpack" Python module). Fast,
+  reliable binary serialization format. If used, keys can hold binary values as
+  well.
 
-* cbor - similar to msgpack (requires manually installing "cbor" module)
+* cbor - similar to msgpack (requires manually installing "cbor" Python module)
 
 * pickle - native Python pickle binary data serialization format. Is slower
   than msgpack/cbor, but keys can hold Python objects and functions as-is.
