@@ -111,7 +111,7 @@ listed in yedb.server.METHODS can be called.
 ```python
 from yedb import YEDB
 
-with YEDB('http://localhost:8870') as db:
+with YEDB('/path/to/db') as db:
     with db.key('path/to/keydict) as key:
         key.set('field', 'value')
     # If modified, the key is automatically saved at the end of the statement.
