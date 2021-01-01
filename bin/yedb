@@ -43,8 +43,8 @@ def print_warn(text):
     cprint(text, color='yellow', attrs='bold', file=sys.stderr)
 
 
-def print_tb():
-    if yedb.debug:
+def print_tb(force=False):
+    if yedb.debug or force:
         import traceback
         print_err(traceback.format_exc())
     else:
@@ -368,7 +368,7 @@ def dispatcher(cmd, **kwargs):
                         data = yaml.safe_load(y)
                     except:
                         import time
-                        print_tb()
+                        print_tb(force=True)
                         time.sleep(3)
                         continue
                     if data == value:
