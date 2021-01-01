@@ -132,7 +132,7 @@
       :returns: Generator object with broken keys found
       
    
-   .. py:method:: YEDB.clear()
+   .. py:method:: YEDB.clear(flush=False)
       :module: yedb
    
       Clears database (removes everything)
@@ -156,7 +156,7 @@
       Copy key to new
       
    
-   .. py:method:: YEDB.delete(key, recursive=False, flush=False)
+   .. py:method:: YEDB.delete(key, recursive=False, flush=False, _no_flush=False, _dir_only=False)
       :module: yedb
    
       Deletes key
@@ -256,7 +256,7 @@
       :raises RuntimeError: database / meta info errors
       
    
-   .. py:method:: YEDB.purge(keep_broken=False)
+   .. py:method:: YEDB.purge(keep_broken=False, flush=False)
       :module: yedb
    
       Purges empty directories
@@ -273,13 +273,13 @@
       :returns: Generator object with broken keys found and removed
       
    
-   .. py:method:: YEDB.rename(key, dst_key)
+   .. py:method:: YEDB.rename(key, dst_key, flush=False)
       :module: yedb
    
       Rename key or category to new
       
    
-   .. py:method:: YEDB.repair(purge_after=True)
+   .. py:method:: YEDB.repair(purge_after=True, flush=False)
       :module: yedb
    
       Repairs database
