@@ -1,10 +1,12 @@
-__version__ = '0.0.23'
+__version__ = '0.0.24'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
 import yedb
 import platform
 import os
+import time
+import signal
 from types import GeneratorType
 from pathlib import Path
 
@@ -44,6 +46,18 @@ METHODS = [
     'test', 'get', 'set', 'list_subkeys', 'get_subkeys', 'copy', 'rename',
     'key_exists', 'explain', 'delete', 'purge', 'check', 'repair', 'info'
 ]
+
+
+def shutdown(signum, frame):
+    global server_active
+    server_active = False
+
+
+def block():
+    global server_active
+    server_active = True
+    while server_active:
+        time.sleep(0.1)
 
 
 class InvalidRequest(Exception):
@@ -178,16 +192,23 @@ def start(host='127.0.0.1',
     api = API()
     cherrypy.tree.mount(api)
 
+    p = Path(pid_file)
+    p.write_text(str(os.getpid()))
+
+    signal.signal(signal.SIGINT, shutdown)
+    signal.signal(signal.SIGTERM, shutdown)
+
     with yedb.YEDB(auto_repair=not disable_auto_repair, **dboptions) as db:
         api.db = db
 
         cherrypy.engine.start()
         logger.info(f'YEDB server started at {host}:{port} '
                     f'({threads} threads), DB: {dboptions["dbpath"]}')
-        p = Path(pid_file)
         try:
-            p.write_text(str(os.getpid()))
-            cherrypy.engine.block()
+            block()
+            cherrypy.engine.stop()
+            logger.info(f'YEDB server stopped')
+            cherrypy.engine.exit()
         finally:
             try:
                 p.unlink()
