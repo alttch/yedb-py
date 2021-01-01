@@ -66,7 +66,8 @@ yedb get key1
 ## Quick client-server setup
 
 ```
-curl https://raw.githubusercontent.com/alttch/yedb/main/server-setup.sh | sudo sh
+sudo mkdir /opt/yedbd
+cd /opt/yedbd && curl https://raw.githubusercontent.com/alttch/yedb/main/server-setup.sh | sudo sh
 ```
 
 Use env to specify extra options:
