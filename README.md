@@ -71,13 +71,13 @@ yedb
 ```python
 from yedb import YEDB
 
-with YEDB('/path/to/db') as db:
+with YEDB('/path/to/db', auto_repair=True) as db:
     # do some stuff
 
 # OR
 
 db = YEDB('/path/to/db')
-db.open()
+db.open(auto_repair=True)
 try:
     # do some stuff
 finally:
