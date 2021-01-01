@@ -619,16 +619,18 @@ ap.ps = '{}> '.format(colored(db_ps, color='yellow'))
 
 ap.run = dispatcher
 
-if need_launch:
-    ap.launch()
-else:
-    import readline
-    history_file = os.path.expanduser('~') + '/.yedb_history'
-    try:
-        readline.read_history_file(history_file)
-    except FileNotFoundError:
-        pass
-    ap.interactive()
-    readline.write_history_file(history_file)
+try:
+    if need_launch:
+        ap.launch()
+    else:
+        import readline
+        history_file = os.path.expanduser('~') + '/.yedb_history'
+        try:
+            readline.read_history_file(history_file)
+        except FileNotFoundError:
+            pass
+        ap.interactive()
+        readline.write_history_file(history_file)
 
-db.close()
+finally:
+    db.close()
