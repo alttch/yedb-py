@@ -1,4 +1,4 @@
-__version__ = '0.0.24'
+__version__ = '0.0.25'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
@@ -207,7 +207,7 @@ def start(host='127.0.0.1',
         try:
             block()
             cherrypy.engine.stop()
-            logger.info(f'YEDB server stopped')
+            logger.info(f'YEDB server stopped, DB: {dboptions["dbpath"]}')
             cherrypy.engine.exit()
         finally:
             try:
