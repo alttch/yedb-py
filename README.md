@@ -22,10 +22,11 @@ up the engine but is not recommended - why then YEDB is used for).
 
 * YEDB has built-in tools to automatically repair itself if any keys are broken.
 
-* YEDB has a cool CLI :)
-
 * If the tools failed to help, YEDB can be easily repaired by a system
   administrator, using standard Linux tools.
+
+* YEDB has a cool CLI
+
 
 Practical usage:
 
