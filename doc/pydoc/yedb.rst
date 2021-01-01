@@ -172,6 +172,10 @@
       
       Calls repair and logs the details
       
+      :returns: True if repair is successful, False if an error occured. Does not
+                raise exceptions, as the broken database is still usable, except
+                may miss some keys or they may be broken.
+      
    
    .. py:method:: YEDB.explain(key)
       :module: yedb

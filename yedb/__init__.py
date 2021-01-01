@@ -909,6 +909,11 @@ class YEDB():
         One-shot auto repair
 
         Calls repair and logs the details
+
+        Returns:
+            True if repair is successful, False if an error occured. Does not
+            raise exceptions, as the broken database is still usable, except
+            may miss some keys or they may be broken.
         """
         logger.warning(f'{self.db} repair started')
         removed = 0
