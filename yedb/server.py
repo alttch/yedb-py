@@ -1,4 +1,4 @@
-__version__ = '0.0.28'
+__version__ = '0.0.29'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
@@ -85,8 +85,8 @@ class API:
                 return {k: safe_serialize(v) for k, v in data.items()}
             elif isinstance(data, list) or isinstance(data, tuple):
                 return [safe_serialize(v) for v in data]
-            elif isinstance(data, bool) or isinstance(data, int) or isinstance(
-                    data, float):
+            elif data is None or isinstance(data, bool) or isinstance(
+                    data, int) or isinstance(data, float):
                 return data
             else:
                 return str(data)
