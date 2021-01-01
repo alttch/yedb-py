@@ -355,7 +355,7 @@ def dispatcher(cmd, **kwargs):
             key = kwargs.get('KEY')
             try:
                 value = db.get(key=key)
-            except (KeyError, RuntimeError):
+            except KeyError:
                 value = ''
             editor = os.getenv('EDITOR', 'vi')
             tmpfile = Path(

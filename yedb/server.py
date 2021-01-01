@@ -152,6 +152,8 @@ class API:
                 r = format_error(-32601, 'Method not found')
             except TypeError as e:
                 r = format_error(-32602, str(e))
+            except KeyError as e:
+                r = format_error(-32001, str(e))
             except Exception as e:
                 r = format_error(-32000, str(e))
                 if yedb.debug:

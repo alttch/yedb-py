@@ -96,7 +96,11 @@ class YEDB():
         else:
             data = json.loads(r.text)
         try:
-            raise RuntimeError(data['error']['message'])
+            error_code = data['error']['code']
+            if error_code == 32001:
+                raise KeyError(data['error']['message'])
+            else:
+                raise RuntimeError(data['error']['message'])
         except KeyError:
             return data['result']
 
