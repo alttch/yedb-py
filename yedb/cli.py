@@ -229,7 +229,8 @@ def cli():
                 for k, v in d.items():
                     if v is None:
                         d[k] = '<null>'
-            from rapidtables import format_table, FORMAT_GENERATOR, MULTILINE_ALLOW
+            from rapidtables import (format_table, FORMAT_GENERATOR,
+                                     MULTILINE_ALLOW)
 
             header, rows = format_table(data,
                                         fmt=FORMAT_GENERATOR,
@@ -350,9 +351,8 @@ def cli():
                 except KeyError:
                     value = ''
                 editor = os.getenv('EDITOR', 'vi')
-                tmpfile = Path(
-                    f'{tempfile.gettempdir()}/{random.randint(0,100000)}.tmp.yaml'
-                )
+                tmpfile = Path(f'{tempfile.gettempdir()}'
+                               f'/{random.randint(0,100000)}.tmp.yaml')
                 tmpfile.write_text('' if value == '' else yaml.
                                    dump(value, default_flow_style=False))
                 try:
