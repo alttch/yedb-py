@@ -182,10 +182,8 @@ try:
     if db_path and not str(db_path).startswith('-'):
         del sys.argv[1]
         db = yedb.YEDB(db_path, default_fmt=fmt, **options)
-        db.open()
-        if db.info()['repair_recommended']:
-            print_warn(
-                'database has not been closed correctly, repair is recommended')
+    else:
+        db = None
 except Exception as e:
     print_err(e)
     print_tb()
@@ -619,7 +617,12 @@ ap.ps = '{}> '.format(colored(db_ps, color='yellow'))
 
 ap.run = dispatcher
 
+if db:
+    db.open()
 try:
+    if db and db.info()['repair_recommended']:
+        print_warn(
+            'database has not been closed correctly, repair is recommended')
     if need_launch:
         ap.launch()
     else:
@@ -633,4 +636,5 @@ try:
         readline.write_history_file(history_file)
 
 finally:
-    db.close()
+    if db:
+        db.close()
