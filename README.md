@@ -179,6 +179,16 @@ Start client/server with DEBUG=1 env variable:
 DEBUG=1 yedb /path/to/db
 ```
 
+to debug when embedded, enable debug logging
+
+```python
+import yedb
+
+yedb.debug = True
+```
+
+After, lower the default logging level.
+
 ## Module documentation
 
 https://yedb.readthedocs.io/
