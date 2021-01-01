@@ -1,4 +1,4 @@
-VERSION=0.0.25
+VERSION=0.0.26
 
 all:
 	@echo "Select target"
@@ -7,7 +7,7 @@ ver:
 	find . -type f -name "*.py" -exec \
 			sed -i "s/^__version__ = .*/__version__ = '${VERSION}'/g" {} \;
 	find ./bin -type f -exec sed -i "s/^__version__ = .*/__version__ = '${VERSION}'/g" {} \;
-	sed -i "s/^YEDB_VERSION=.*/YEDB_VERSION="${VERSION}"/g" server-setup.sh
+	sed -i "s/^YEDB_VERSION=.*/YEDB_VERSION="${VERSION}"/g" setup-server.sh
 
 clean:
 	rm -rf dist build yedb.egg-info

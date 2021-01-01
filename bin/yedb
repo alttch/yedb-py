@@ -263,7 +263,10 @@ def dispatcher(cmd, **kwargs):
                         import json
                         v = json.dumps(v, indent=4, sort_keys=True)
                     data.append(
-                        dict(key=k, type=tp, value=yedb._format_debug_value(v)))
+                        dict(key=k,
+                             type=tp,
+                             value=v if kwargs.get('full') else
+                             yedb._format_debug_value(v)))
                 if db.key_exists(key=key):
                     data.append(dict(key=key, value=db.get(key=key)))
                 pretty_print_table(sorted(data, key=lambda k: k['key']))
@@ -544,6 +547,10 @@ ap_get = sp.add_parser('get', help='Get key value')
 ap_get.add_argument('KEY', help='Key name or <key>:<field> for dict keys'
                    ).completer = KeyGroupCompleter()
 ap_get.add_argument('-r', '--recursive', action='store_true')
+ap_get.add_argument('-y',
+                    '--full',
+                    action='store_true',
+                    help='Full value output when recursive')
 ap_get.add_argument('--ignore-broken', action='store_true')
 ap_get.add_argument('-R', '--raw', help='Output raw value', action='store_true')
 
