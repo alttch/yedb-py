@@ -1,4 +1,4 @@
-__version__ = '0.0.10'
+__version__ = '0.0.11'
 
 DB_VERSION = 1
 
@@ -854,7 +854,7 @@ class YEDB():
         if not self._opened:
             raise RuntimeError('database is not opened')
         name = self._fmt_key(key)
-        if name == '':
+        if name == '' and not recursive:
             return
         if debug:
             logger.debug(f'deleting key {name}')
