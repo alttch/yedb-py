@@ -443,9 +443,8 @@ class YEDB():
             lock_ex: lock database exclusively, so no other thread/process can
                 open it (requires "portalocker" module)
         Returns:
-            True: db is opened
-            False: db is opened, but it has not been closed correctly during
-                the previous session, repair is recommended
+            True if db is opened, False if db is opened, but it has not been
+            closed correctly during the previous session, repair is recommended
         Raises:
             TimeoutError: database lock timeout
             ModuleNotFoundError: missing Python module for the chosen format
