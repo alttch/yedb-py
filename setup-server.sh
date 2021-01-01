@@ -1,6 +1,6 @@
 #!/bin/sh
 
-YEDB_VERSION=0.0.29
+YEDB_VERSION=0.0.30
 
 REQUIRED="realpath python3 curl"
 MODS="yedb==${YEDB_VERSION} msgpack==1.0.2 cherrypy==17.4.1"

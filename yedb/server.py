@@ -1,4 +1,4 @@
-__version__ = '0.0.29'
+__version__ = '0.0.30'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
@@ -79,14 +79,13 @@ class API:
             return dict(jsonrpc='2.0', error=dict(code=code, message=msg))
 
         def safe_serialize(data):
-            if isinstance(data, bytes):
-                return data
-            elif isinstance(data, dict):
+            if isinstance(data, dict):
                 return {k: safe_serialize(v) for k, v in data.items()}
             elif isinstance(data, list) or isinstance(data, tuple):
                 return [safe_serialize(v) for v in data]
             elif data is None or isinstance(data, bool) or isinstance(
-                    data, int) or isinstance(data, float):
+                    data, int) or isinstance(data, float) or isinstance(
+                        data, bytes):
                 return data
             else:
                 return str(data)
@@ -141,7 +140,7 @@ class API:
                     result['sha256'] = result['sha256'].hex()
                 elif method == 'info':
                     result['host'] = f'{r.local.name}:{r.local.port}'
-                if result is None:
+                if result is None and method != 'get':
                     result = True
                 else:
                     result = safe_serialize(result)
