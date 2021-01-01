@@ -26,7 +26,7 @@ neotermcolor.readline_always_safe = True
 
 remote = False
 
-if os.getenv('DEBUG'):
+if os.getenv('DEBUG') == '1':
     import logging
     logging.basicConfig(level=logging.DEBUG)
     yedb.debug = True
