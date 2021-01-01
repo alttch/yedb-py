@@ -12,6 +12,8 @@ import threading
 
 g = threading.local()
 
+RLock = threading.RLock
+
 from pathlib import Path
 from functools import partial
 
@@ -194,7 +196,7 @@ class YEDB():
             self.default_fmt = default_fmt if default_fmt else DEFAULT_FMT
             self.default_checksums = default_checksums
             self._dbpath_len = len(self.db.absolute().as_posix()) + 1
-            self.lock = threading.RLock()
+            self.lock = RLock()
             self._key_locks = {}
             self._opened = False
             self._flock = None
@@ -585,7 +587,7 @@ class YEDB():
             try:
                 l = self._key_locks[name]
             except KeyError:
-                l = threading.RLock()
+                l = RLock()
                 self._key_locks[name] = l
             with l:
                 keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
@@ -636,12 +638,12 @@ class YEDB():
             try:
                 l = self._key_locks[name]
             except KeyError:
-                l = threading.RLock()
+                l = RLock()
                 self._key_locks[name] = l
             try:
                 l2 = self._key_locks[new_name]
             except KeyError:
-                l2 = threading.RLock()
+                l2 = RLock()
                 self._key_locks[new_name] = l2
             with l:
                 with l2:
@@ -743,7 +745,7 @@ class YEDB():
             try:
                 l = self._key_locks[name]
             except KeyError:
-                l = threading.RLock()
+                l = RLock()
                 self._key_locks[name] = l
             with l:
                 keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
@@ -795,7 +797,7 @@ class YEDB():
             try:
                 l = self._key_locks[name]
             except KeyError:
-                l = threading.RLock()
+                l = RLock()
                 self._key_locks[name] = l
             keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
             keydir = self.db / keypath
@@ -819,7 +821,7 @@ class YEDB():
             try:
                 l = self._key_locks[name]
             except KeyError:
-                l = threading.RLock()
+                l = RLock()
                 self._key_locks[name] = l
             keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
             keydir = self.db / keypath
@@ -852,7 +854,7 @@ class YEDB():
             try:
                 l = self._key_locks[name]
             except KeyError:
-                l = threading.RLock()
+                l = RLock()
                 self._key_locks[name] = l
             with l:
                 dn = self.db / name
@@ -1238,8 +1240,8 @@ class KeyDict:
 
     def close(self, _write=True):
         if _write and self._changed:
-            if not self.db.write_modified_only or self.db.get(self.key_name,
-                                                     {}) != self.data:
+            if not self.db.write_modified_only or self.db.get(
+                    self.key_name, {}) != self.data:
                 if debug:
                     logger.debug(f'requesting to update {self.key_name}')
                 self.db._write(self.key_file, self.db._dump_value(self.data))
@@ -1315,8 +1317,8 @@ class KeyList:
 
     def close(self, _write=True):
         if _write and self._changed:
-            if not self.db.write_modified_only or self.db.get(self.key_name,
-                                                     {}) != self.data:
+            if not self.db.write_modified_only or self.db.get(
+                    self.key_name, {}) != self.data:
                 if debug:
                     logger.debug(f'requesting to update {self.key_name}')
                 self.db._write(self.key_file, self.db._dump_value(self.data))

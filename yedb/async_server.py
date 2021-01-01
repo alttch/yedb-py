@@ -16,6 +16,17 @@ import logging
 
 logger = logging.getLogger('yedb')
 
+
+class DummyLock:
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+yedb.RLock = DummyLock
+
 if os.getenv('DEBUG'):
     import logging
     logging.basicConfig(level=logging.DEBUG)
