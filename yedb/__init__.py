@@ -444,6 +444,7 @@ class YEDB():
     def open(self,
              timeout=None,
              auto_create=True,
+             auto_repair=False,
              _skip_lock=False,
              _force_lock_ex=False,
              _skip_meta=False,
@@ -452,6 +453,7 @@ class YEDB():
         Args:
             timeout: max open timeout
             auto_create: automatically create db
+            auto_repair: automatically repair db
             safe_write: perform safe writes (check key and write file only if
                 the key is changed)
             auto_flush: always flush written data to disk
@@ -460,6 +462,7 @@ class YEDB():
         Returns:
             True if db is opened, False if db is opened, but it has not been
             closed correctly during the previous session, repair is recommended
+            (unless auto-repaired)
         Raises:
             TimeoutError: database lock timeout
             ModuleNotFoundError: missing Python module for the chosen format
@@ -517,6 +520,12 @@ class YEDB():
 
             if self.auto_flush:
                 self._sync_dirs([self.db])
+
+            if not result:
+                logger.warning(f'DB {self.db} has not been closed correctly')
+                if auto_repair or self.auto_repair:
+                    result = self.do_repair()
+
             return result
 
     def _lock_db(self, timeout=None):
@@ -548,31 +557,12 @@ class YEDB():
             if self.auto_flush:
                 self._sync_dirs([self.db])
 
-    def __enter__(self, *args, auto_repair=False, **kwargs):
+    def __enter__(self, *args, **kwargs):
         """
         Raises:
             TimeoutError
         """
-        result = self.open(*args, **kwargs)
-        if not result:
-            logger.warning(f'DB {self.db} has not been closed correctly')
-            if auto_repair or self.auto_repair:
-                logger.warning(f'{self.db} repair started')
-                removed = 0
-                restored = 0
-                try:
-                    for k, v in self.repair():
-                        if v:
-                            logger.info(f'{self.db} key {k} restored')
-                            restored += 1
-                        else:
-                            logger.error(
-                                f'{self.db} key {k} is broken, removed')
-                            removed += 1
-                    logger.warning(f'{self.db} repair completed, {restored} '
-                                   f'keys restored, {removed} keys removed')
-                except Exception as e:
-                    logger.error(e)
+        self.open(*args, **kwargs)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -913,6 +903,30 @@ class YEDB():
         if debug:
             logger.debug(f'CLEAR operation requested')
         self._delete_subkeys(flush=flush or self.auto_flush)
+
+    def do_repair(self):
+        """
+        One-shot auto repair
+
+        Calls repair and logs the details
+        """
+        logger.warning(f'{self.db} repair started')
+        removed = 0
+        restored = 0
+        try:
+            for k, v in self.repair():
+                if v:
+                    logger.info(f'{self.db} key {k} restored')
+                    restored += 1
+                else:
+                    logger.error(f'{self.db} key {k} is broken, removed')
+                    removed += 1
+            logger.warning(f'{self.db} repair completed, {restored} '
+                           f'keys restored, {removed} keys removed')
+            return True
+        except Exception as e:
+            logger.error(e)
+            return False
 
     def repair(self, purge_after=True, flush=False):
         """
