@@ -23,6 +23,16 @@ YEDB database objects are absolutely thread-safe.
 If the tools failed to help, YEDB can be easily repaired by a system
 administrator, using standard Linux tools.
 
+Practical usage:
+
+* Create a database and start writing continuously
+
+* Turn the power switch off
+
+* Boot the machine again. Typical result: the latest saved key isn't survived
+  but the database is still valid and working. In 99% cases, the latest key can
+  be automatically restored with built-in repair tools.
+
 We created YEDB to use in our embedded products as config registry trees and
 rugged key-value data storage. We use it a lot and hope you'll like it too.
 
