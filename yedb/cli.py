@@ -184,13 +184,13 @@ def cli():
     class KeyCompleter:
 
         def __call__(self, prefix, **kwargs):
-            for k in db.list_subkeys():
+            for k in db.list_subkeys(hidden=True):
                 yield k
 
     class KeyGroupCompleter:
 
         def __call__(self, prefix, **kwargs):
-            for k in db.list_subkeys():
+            for k in db.list_subkeys(hidden=True):
                 if '/' in k:
                     c = k.split('/')
                     for i in range(len(c) + 1):
