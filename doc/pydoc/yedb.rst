@@ -116,6 +116,7 @@
    :param http_username: http username
    :param http_password: http password
    :param http_auth: auth type (basic or digest)
+   :param cache_size: item cache size
    
    
    .. py:method:: YEDB.__enter__(*args, **kwargs)
@@ -197,7 +198,7 @@
                       specified, KeyError is raised)
       
    
-   .. py:method:: YEDB.get_subkeys(key='', ignore_broken=False)
+   .. py:method:: YEDB.get_subkeys(key='', ignore_broken=False, hidden=False)
       :module: yedb
    
       Get subkeys of the specified key and their values
@@ -236,7 +237,7 @@
       :param key: key name
       
    
-   .. py:method:: YEDB.list_subkeys(key='')
+   .. py:method:: YEDB.list_subkeys(key='', hidden=False)
       :module: yedb
    
       List subkeys of the specified key
