@@ -6,6 +6,8 @@ DEFAULT_FMT = 'json'
 
 DEFAULT_HTTP_TIMEOUT = 5
 
+DEFAULT_CACHE_SIZE = 1000
+
 FMTS = ['json', 'yaml', 'msgpack', 'cbor', 'pickle']
 
 import threading
@@ -16,6 +18,7 @@ RLock = threading.RLock
 
 from pathlib import Path
 from functools import partial
+from cachetools import LRUCache
 
 import os
 
@@ -154,9 +157,12 @@ class YEDB():
             http_username: http username
             http_password: http password
             http_auth: auth type (basic or digest)
+            cache_size: item cache size
         """
         path = str(dbpath)
         self.auto_repair = kwargs.get('auto_repair')
+        self.cache = cachetools.LRUCache(
+            kwargs.get('cache_size', DEFAULT_CACHE_SIZE))
         if debug:
             logger.debug('initializing db')
             logger.debug(f'path: {path}')
