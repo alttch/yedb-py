@@ -799,7 +799,7 @@ class YEDB():
                 keydir = self.db / keypath
                 key_file = keydir / (keyn + self.suffix)
                 if _check_exists_only:
-                    return key_file.exists()
+                    return name in self.cache or key_file.exists()
                 else:
                     try:
                         if debug:
@@ -807,7 +807,10 @@ class YEDB():
                         if name in self.cache:
                             if debug:
                                 logger.debug(f'found cached key {name}')
-                            value, checksum, stime = self.cache[name]
+                            try:
+                                value, checksum, stime = self.cache[name]
+                            except TypeError:
+                                raise FileNotFoundError
                         else:
                             s = self.read(key_file)
                             if self.checksums and _extended_info:
@@ -829,6 +832,7 @@ class YEDB():
                                 checksum, stime,
                                 key_file if _extended_info else None)
                     except FileNotFoundError:
+                        self.cache[name] = None
                         if default is KeyError:
                             raise KeyError(f'Key not found: {name}')
                         else:
@@ -1050,6 +1054,8 @@ class YEDB():
 
         Also deletes unnecessary files (e.g. left after format conversion) and
         checks all entries.
+
+        The command also clears memory cache.
 
         Args:
             keep_broken: keys are not tested, broken keys are not removed
