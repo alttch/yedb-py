@@ -42,6 +42,10 @@ class ChecksumError(Exception):
         return 'Checksum error'
 
 
+class SchemaError(Exception):
+    pass
+
+
 def _format_debug_value(v):
     dv = str(v)
     if len(dv) > 79:
@@ -212,6 +216,9 @@ class YEDB():
             self.lock_ex = True
             self.force_native_json = False
             self._parse_options(kwargs)
+
+    def validate_schema(self, key, value):
+        pass
 
     def _parse_options(self, options):
         for o in ['write_modified_only', 'auto_flush', 'lock_ex']:
@@ -616,6 +623,7 @@ class YEDB():
                 l = RLock()
                 self._key_locks[name] = l
             with l:
+                self.validate_schema(key, value)
                 keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
                                                                          name)
                 keydir = self.db / keypath
@@ -1291,6 +1299,7 @@ class KeyDict:
                 if debug:
                     logger.debug(f'requesting to update {self.key_name}')
                 with self.db.lock:
+                    self.db.validate_schema(self.key_name, self.data)
                     val, checksum, stime = self.db._dump_value(self.data)
                     self.db._write(self.key_file, val)
                     self.db.cache[self.key_name] = (self.data, checksum, stime)
@@ -1371,6 +1380,7 @@ class KeyList:
                 if debug:
                     logger.debug(f'requesting to update {self.key_name}')
                 with self.db.lock:
+                    self.db.validate_schema(self.key_name, self.data)
                     val, checksum, stime = self.db._dump_value(self.data)
                     self.db._write(self.key_file, val)
                     self.db.cache[self.key_name] = (self.data, checksum, stime)

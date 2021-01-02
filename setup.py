@@ -17,7 +17,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     license='Apache License 2.0',
-    install_requires=['portalocker', 'cachetools'],
+    install_requires=['portalocker', 'cachetools', 'jsonschema'],
     classifiers=(
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: Apache Software License',
