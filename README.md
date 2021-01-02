@@ -25,8 +25,10 @@ up the engine but is not recommended - why then YEDB is used for).
 * If the tools failed to help, YEDB can be easily repaired by a system
   administrator, using standard Linux tools.
 
-* YEDB has a cool CLI
+* YEDB can automatically validate keys with JSON Schema
+  (https://json-schema.org/)
 
+* YEDB has a cool CLI
 
 Practical usage:
 
