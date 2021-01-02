@@ -207,7 +207,7 @@ As all keys are serialized values, they can be automatically schema-validated
 with JSON Schema (https://json-schema.org/).
 
 To create the validation schema for the chosen key, or key group, create a
-special key ".schema/path/to", which have to contain the valid JSON Schema.
+special key ".schema/path/to", which has to contain the valid JSON Schema.
 
 E.g. the schema, stored in the key ".schema/groups/group1" will be used for
 validating all keys in "groups/group1", including the group primary key. And
