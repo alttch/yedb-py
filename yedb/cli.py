@@ -512,19 +512,24 @@ def cli():
                                           (time.perf_counter() - start)),
                                     color='yellow')))
                 print()
-                for n, v in [('numeric', 777.777), ('string', 'x' * 1000),
-                             ('array', test_arr), ('dict', test_dict)]:
-                    start = time.perf_counter()
-                    for z in range(iters):
-                        db.get(key=f'.benchmark/{n}/key{z}')
-                    print(
-                        colored(
-                            f'get/{n}'.ljust(12), color='green', attrs='bold') +
-                        ': {} keys/sec'.format(
-                            colored(round(iters /
-                                          (time.perf_counter() - start)),
-                                    color='yellow')))
-                print()
+                list(db.purge())
+                for c in range(2):
+                    for n, v in [('numeric', 777.777), ('string', 'x' * 1000),
+                                 ('array', test_arr), ('dict', test_dict)]:
+                        start = time.perf_counter()
+                        for z in range(iters):
+                            db.get(key=f'.benchmark/{n}/key{z}')
+                        print(
+                            colored(f'get{"(cached)" if c else ""}/{n}'.ljust(
+                                12),
+                                    color='green',
+                                    attrs='bold') +
+                            ': {} keys/sec'.format(
+                                colored(round(iters /
+                                              (time.perf_counter() - start)),
+                                        color='yellow')))
+                    print()
+                print('Cached entries: ', db.info()['cached'])
                 print('cleaning up...')
                 db.delete(key='.benchmark', recursive=True)
             elif cmd == 'clear':

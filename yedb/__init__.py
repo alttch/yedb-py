@@ -161,8 +161,7 @@ class YEDB():
         """
         path = str(dbpath)
         self.auto_repair = kwargs.get('auto_repair')
-        self.cache = cachetools.LRUCache(
-            kwargs.get('cache_size', DEFAULT_CACHE_SIZE))
+        self.cache = LRUCache(kwargs.get('cache_size', DEFAULT_CACHE_SIZE))
         if debug:
             logger.debug('initializing db')
             logger.debug(f'path: {path}')
@@ -355,16 +354,35 @@ class YEDB():
         if isinstance(s, str) and not s.endswith('\n'):
             s += '\n'
         if self.checksums:
-            val = self.calc_digest(s)
+            checksum = self.calc_digest(s)
+            val = checksum
             if stime is None:
                 stime = time_ns()
             if self.checksum_binary:
                 val += stime.to_bytes(8, 'little') + s
             else:
                 val += '\n' + stime.to_bytes(8, 'little').hex() + '\n' + s
-            return val
+            return val, checksum, stime
         else:
-            return s
+            return s, None, None
+
+    def _purge_cache_by_path(self, path):
+        if path != '' and not path.endswith('/'):
+            path += '/'
+        to_purge = set()
+        with self.lock:
+            for k in self.cache:
+                if k.startswith(path) and k in self.cache:
+                    to_purge.add(k)
+            for k in to_purge:
+                try:
+                    del self.cache[k]
+                except KeyError:
+                    pass
+                try:
+                    del self._key_locks[k]
+                except KeyError:
+                    pass
 
     def info(self):
         with self.lock:
@@ -372,6 +390,7 @@ class YEDB():
                 raise RuntimeError('database is not opened')
             d = self.dbinfo.copy()
             d['repair_recommended'] = self.repair_recommended
+            d['cached'] = len(self.cache)
             try:
                 d.update(self.meta_info.copy())
             except:
@@ -478,6 +497,7 @@ class YEDB():
         if debug:
             logger.debug(f'opening database {self.db}')
         with self.lock:
+            self.cache.clear()
             self._parse_options(kwargs)
             if _skip_meta:
                 self.checksums = self.default_checksums
@@ -557,6 +577,7 @@ class YEDB():
                 except FileNotFoundError:
                     pass
             self._opened = False
+            self.cache.clear()
             if self.auto_flush:
                 self._sync_dirs([self.db])
 
@@ -609,9 +630,9 @@ class YEDB():
                             return
                     except KeyError:
                         pass
-                self._write(key_file,
-                            self._dump_value(value, stime=stime),
-                            flush=flush or self.auto_flush)
+                val, checksum, stime = self._dump_value(value, stime=stime)
+                self._write(key_file, val, flush=flush or self.auto_flush)
+                self.cache[key] = (value, checksum, stime)
 
     def copy(self, key, dst_key, delete=False):
         """
@@ -669,6 +690,8 @@ class YEDB():
                     try:
                         key_file.rename(dst_key_file)
                         renamed = True
+                        if key in self.cache:
+                            self.cache[dst_key] = self.cache.pop(key)
                         if flush or self.auto_flush:
                             self._sync_dirs(
                                 {key_file.parent, dst_key_file.parent})
@@ -680,6 +703,7 @@ class YEDB():
                     dst_d = dst_key_file.with_suffix('')
                     try:
                         d.rename(dst_d)
+                        self._purge_cache_by_path(key.rsplit('/', 1)[0])
                         if flush or self.auto_flush:
                             self._sync_dirs({d.parent, dst_d.parent})
                     except FileNotFoundError:
@@ -763,20 +787,27 @@ class YEDB():
                     try:
                         if debug:
                             logger.debug(f'reading key {name} file {key_file}')
-                        s = self.read(key_file)
-                        if self.checksums and _extended_info:
-                            if self.checksum_binary:
-                                checksum = s[:32]
-                                stime = s[32:40]
-                            else:
-                                checksum, stime, _ = s.split(maxsplit=2)
-                                checksum = bytes.fromhex(checksum)
-                                stime = bytes.fromhex(stime)
-                            stime = int.from_bytes(stime, 'little')
+                        if name in self.cache:
+                            if debug:
+                                logger.debug(f'found cached key {name}')
+                            value, checksum, stime = self.cache[name]
                         else:
-                            checksum = None
-                            stime = None
-                        return (self._load_value(s),
+                            s = self.read(key_file)
+                            if self.checksums and _extended_info:
+                                if self.checksum_binary:
+                                    checksum = s[:32]
+                                    stime = s[32:40]
+                                else:
+                                    checksum, stime, _ = s.split(maxsplit=2)
+                                    checksum = bytes.fromhex(checksum)
+                                    stime = bytes.fromhex(stime)
+                                stime = int.from_bytes(stime, 'little')
+                            else:
+                                checksum = None
+                                stime = None
+                            value = self._load_value(s)
+                            self.cache[name] = (value, checksum, stime)
+                        return (value,
                                 key_file.stat() if _extended_info else None,
                                 checksum, stime,
                                 key_file if _extended_info else None)
@@ -887,11 +918,17 @@ class YEDB():
                     del self._key_locks[name]
                 except KeyError:
                     pass
+                try:
+                    del self.cache[name]
+                except KeyError:
+                    pass
                 for p in [keydir] + list(keydir.parents):
                     if p == self.db:
                         break
                     try:
                         p.rmdir()
+                        self._purge_cache_by_path(
+                            p.absolute().as_posix()[self._dbpath_len:])
                         if flush or self.auto_flush:
                             dts.add(p.parent)
                     except OSError:
@@ -959,6 +996,7 @@ class YEDB():
         # repair
         dts = set()
         with self.lock:
+            self.cache.clear()
             if not self._opened:
                 raise RuntimeError('database is not opened')
             # find possible valid keys
@@ -1007,6 +1045,7 @@ class YEDB():
                 f'purge operation requested, keep_broken: {keep_broken}')
         dts = set()
         with self.lock:
+            self.cache.clear()
             if not self._opened:
                 raise RuntimeError('database is not opened')
             # clean up files
@@ -1122,6 +1161,7 @@ class YEDB():
                     self._sync_dirs(dts)
             except FileNotFoundError:
                 pass
+            self._purge_cache_by_path(name)
 
     def get_subkeys(self, key='', ignore_broken=False):
         """
@@ -1249,7 +1289,10 @@ class KeyDict:
                     self.key_name, {}) != self.data:
                 if debug:
                     logger.debug(f'requesting to update {self.key_name}')
-                self.db._write(self.key_file, self.db._dump_value(self.data))
+                with self.db.lock:
+                    val, checksum, stime = self.db._dump_value(self.data)
+                    self.db._write(self.key_file, val)
+                    self.db.cache[self.key_name] = (self.data, checksum, stime)
         self._lock.release()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1326,7 +1369,10 @@ class KeyList:
                     self.key_name, {}) != self.data:
                 if debug:
                     logger.debug(f'requesting to update {self.key_name}')
-                self.db._write(self.key_file, self.db._dump_value(self.data))
+                with self.db.lock:
+                    val, checksum, stime = self.db._dump_value(self.data)
+                    self.db._write(self.key_file, val)
+                    self.db.cache[self.key_name] = (self.data, checksum, stime)
         self._lock.release()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
