@@ -507,7 +507,8 @@ def cli():
                                   color="green" if checksums else "grey"))
                     from tqdm import tqdm
                     try:
-                        pbar = tqdm(total=len(list(db.list_subkeys())))
+                        pbar = tqdm(total=len(list(db.list_subkeys(
+                            hidden=True))))
                         db.close()
                         for key in db.convert_fmt(new_fmt, checksums=checksums):
                             pbar.update(1)
