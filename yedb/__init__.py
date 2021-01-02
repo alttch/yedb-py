@@ -51,7 +51,7 @@ def _format_debug_value(v):
     dv = str(v)
     if len(dv) > 79:
         dv = dv[:76] + '...'
-    return dv
+    return dv.replace('\n', ' ').replace('\r', '').replace('\t', '')
 
 
 class YEDB():
@@ -222,12 +222,54 @@ class YEDB():
             self.force_native_json = False
             self._parse_options(kwargs)
 
+    def _find_schema(self, key):
+        if key.startswith('.schema/') or key == '.schema':
+            try:
+                schema = self.get(key)
+                if schema == {'type': 'code.python'}:
+                    return '<Python code>', 'https://www.python.org/'
+            except KeyError:
+                pass
+            return '<JSON Schema>', 'https://json-schema.org/'
+        while True:
+            try:
+                schema_key = f'.schema/{key}' if key else '.schema'
+                return self.get(schema_key), schema_key
+            except KeyError:
+                pass
+            if key == '':
+                return None, None
+            elif '/' not in key:
+                key = ''
+            else:
+                key = key[:key.rfind('/')]
+
     def validate_schema(self, key, value):
         if key.startswith('.schema/') or key == '.schema':
+            if value == {'type': 'code.python'}:
+                return
+            if debug:
+                logger.debug(f'validating {key} as JSON schema')
             try:
                 jsonschema.validators.validator_for(value).check_schema(value)
             except jsonschema.exceptions.ValidationError as e:
                 raise SchemaValidationError(e)
+        else:
+            schema, schema_key = self._find_schema(key)
+            if schema:
+                try:
+                    if schema == {'type': 'code.python'}:
+                        if debug:
+                            logger.debug(f'validating key {key} with '
+                                         f'schema {schema_key} as code.python')
+                        compile(value, '', mode='exec')
+                    else:
+                        if debug:
+                            logger.debug(f'validating key '
+                                         f'{key} with schema {schema_key}')
+                        jsonschema.validate(value, schema)
+                except Exception as e:
+                    raise SchemaValidationError(e)
 
     def _parse_options(self, options):
         for o in ['write_modified_only', 'auto_flush', 'lock_ex']:
@@ -261,7 +303,6 @@ class YEDB():
             self.suffix = '.json'
             self.read = Path.read_text
             self.write_mode = 'w'
-            self.calc_digest = self._calc_hexdigest
             self.checksum_binary = False
         elif self.fmt in ['yaml', 'yml']:
             import yaml
@@ -272,7 +313,6 @@ class YEDB():
             self.read = Path.read_text
             self.write_mode = 'w'
             self.suffix = '.yml'
-            self.calc_digest = self._calc_hexdigest
             self.checksum_binary = False
         elif self.fmt == 'msgpack':
             import msgpack
@@ -283,7 +323,6 @@ class YEDB():
             self.suffix = '.mp'
             self.read = Path.read_bytes
             self.write_mode = 'wb'
-            self.calc_digest = self._calc_digest
             self.checksum_binary = True
         elif self.fmt == 'cbor':
             import cbor
@@ -294,7 +333,6 @@ class YEDB():
             self.suffix = '.cb'
             self.read = Path.read_bytes
             self.write_mode = 'wb'
-            self.calc_digest = self._calc_digest
             self.checksum_binary = True
         elif self.fmt == 'pickle':
             import pickle
@@ -305,7 +343,6 @@ class YEDB():
             self.suffix = '.p'
             self.read = Path.read_bytes
             self.write_mode = 'wb'
-            self.calc_digest = self._calc_digest
             self.checksum_binary = True
         else:
             raise ValueError(f'Unsupported format: {self.fmt}')
@@ -341,13 +378,9 @@ class YEDB():
             except FileNotFoundError:
                 pass
 
-    def _calc_digest(self, s):
+    def calc_digest(self, s):
         from hashlib import sha256
-        return sha256(s).digest()
-
-    def _calc_hexdigest(self, s):
-        from hashlib import sha256
-        return sha256(s.encode()).hexdigest()
+        return sha256(s if isinstance(s, bytes) else s.encode()).digest()
 
     def _load_value(self, s):
         if self.checksums:
@@ -358,7 +391,9 @@ class YEDB():
                     raise ChecksumError
             else:
                 checksum, date, value = s.split(maxsplit=2)
-                if self.calc_digest(value) == checksum:
+                if (self.checksum_binary and self.calc_digest(value)
+                        == checksum) or (self.calc_digest(value).hex()
+                                         == checksum):
                     return self.loads(value)
                 else:
                     raise ChecksumError
@@ -371,7 +406,7 @@ class YEDB():
             s += '\n'
         if self.checksums:
             checksum = self.calc_digest(s)
-            val = checksum
+            val = checksum if self.checksum_binary else checksum.hex()
             if stime is None:
                 stime = time_ns()
             if self.checksum_binary:
@@ -632,7 +667,6 @@ class YEDB():
                 l = RLock()
                 self._key_locks[name] = l
             with l:
-                self.validate_schema(key, value)
                 keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
                                                                          name)
                 keydir = self.db / keypath
@@ -647,6 +681,7 @@ class YEDB():
                             return
                     except KeyError:
                         pass
+                self.validate_schema(key, value)
                 val, checksum, stime = self._dump_value(value, stime=stime)
                 self._write(key_file, val, flush=flush or self.auto_flush)
                 self.cache[key] = (value, checksum, stime)
@@ -748,12 +783,13 @@ class YEDB():
         """
         return self._get(key, default)[0]
 
-    def explain(self, key):
+    def explain(self, key, full_value=False):
         """
         Get key value + extended info
 
         Args:
             name: key name
+            full_value: obtain full key value
 
         Returns:
             dict(value, info=Path.stat, checksum=checksum, file=Path)
@@ -768,13 +804,22 @@ class YEDB():
         except:
             ln = None
         return {
-            'value': _format_debug_value(result[0]),
-            'len': ln,
-            'type': tp,
-            'info': result[1],
-            'sha256': result[2],
-            'stime': result[3],
-            'file': result[4].absolute(),
+            'value':
+                result[0] if full_value else _format_debug_value(result[0]),
+            'schema':
+                self._find_schema(key)[1],
+            'len':
+                ln,
+            'type':
+                tp,
+            'info':
+                result[1],
+            'sha256':
+                result[2],
+            'stime':
+                result[3],
+            'file':
+                result[4].absolute(),
         }
 
     def _get(self,
@@ -1309,11 +1354,11 @@ class KeyDict:
 
     def close(self, _write=True):
         if _write and self._changed:
-            if not self.db.write_modified_only or self.db.get(
-                    self.key_name, {}) != self.data:
-                if debug:
-                    logger.debug(f'requesting to update {self.key_name}')
-                with self.db.lock:
+            with self.db.lock:
+                if not self.db.write_modified_only or self.db.get(
+                        self.key_name, {}) != self.data:
+                    if debug:
+                        logger.debug(f'requesting to update {self.key_name}')
                     self.db.validate_schema(self.key_name, self.data)
                     val, checksum, stime = self.db._dump_value(self.data)
                     self.db._write(self.key_file, val)
@@ -1390,11 +1435,11 @@ class KeyList:
 
     def close(self, _write=True):
         if _write and self._changed:
-            if not self.db.write_modified_only or self.db.get(
-                    self.key_name, {}) != self.data:
-                if debug:
-                    logger.debug(f'requesting to update {self.key_name}')
-                with self.db.lock:
+            with self.db.lock:
+                if not self.db.write_modified_only or self.db.get(
+                        self.key_name, {}) != self.data:
+                    if debug:
+                        logger.debug(f'requesting to update {self.key_name}')
                     self.db.validate_schema(self.key_name, self.data)
                     val, checksum, stime = self.db._dump_value(self.data)
                     self.db._write(self.key_file, val)

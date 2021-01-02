@@ -9,17 +9,19 @@ def cli():
         import yaml
         import tqdm
         import pygments
+        import getch
     except:
         print('Please manually install required CLI modules:')
         print()
-        print(
-            '  pip3 install icli neotermcolor rapidtables pyyaml tqdm pygments')
+        print('  pip3 install icli neotermcolor '
+              'rapidtables pyyaml tqdm pygments getch')
         print()
         raise
     import sys
     import os
     import time
     from pathlib import Path
+    from hashlib import sha256
 
     colored = neotermcolor.colored
     cprint = neotermcolor.cprint
@@ -42,14 +44,14 @@ def cli():
     def print_warn(text):
         cprint(text, color='yellow', attrs='bold', file=sys.stderr)
 
-    def print_tb(force=False, delay=None):
+    def print_tb(force=False, delay=False):
         if yedb.debug or force:
             import traceback
             print_err(traceback.format_exc())
         else:
             print_err('FAILED')
         if delay:
-            time.sleep(delay)
+            getch.getch()
 
     def fmt_size(num, suffix='B'):
         for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
@@ -199,7 +201,7 @@ def cli():
                         yield '/'.join(c[:i])
                 yield k
 
-    def pretty_print(value, raw=False):
+    def pretty_print(value, raw=False, as_code=None):
         if isinstance(value, bytes):
             if sys.stdout.isatty():
                 raise RuntimeError(
@@ -223,7 +225,11 @@ def cli():
                 } for k, v in value.items()],
                        key=lambda k: k['field']))
         else:
-            cprint(value, color='blue')
+            if as_code == 'python' and sys.stdout.isatty():
+                from pygments import highlight, lexers, formatters
+                value = highlight(value, lexers.Python3Lexer(),
+                                  formatters.TerminalFormatter())
+            print(value)
 
     def pretty_print_table(data):
         if data:
@@ -265,6 +271,7 @@ def cli():
                         data.append(dict(key=key, value=db.get(key=key)))
                     pretty_print_table(sorted(data, key=lambda k: k['key']))
                 else:
+                    as_raw = kwargs.get('raw')
                     if ':' in key:
                         name, field = key.rsplit(':', 1)
                         with db.key_dict(key=name) as kd:
@@ -276,11 +283,26 @@ def cli():
                                 return
                     else:
                         try:
-                            value = db.get(key=key)
+                            if as_raw:
+                                pretty_print(db.get(key=key))
+                                return
+                            else:
+                                key_info = db.explain(key=key, full_value=True)
                         except KeyError:
                             print_err(f'Key not found: {key}')
                             return
-                    pretty_print(value, raw=kwargs.get('raw'))
+                    value = key_info['value']
+                    if key_info.get('schema'):
+                        try:
+                            schema = db.get(key=key_info['schema'])
+                        except KeyError:
+                            schema = None
+                    else:
+                        schema = None
+                    pretty_print(value,
+                                 raw=as_raw,
+                                 as_code='python'
+                                 if schema == {'type': 'code.python'} else None)
             elif cmd == 'cat':
                 dispatcher(cmd='get', KEY=kwargs.get('KEY'), raw=True)
             elif cmd == 'copy':
@@ -317,6 +339,9 @@ def cli():
                     'name': 'type',
                     'value': key_info['type'],
                 }, {
+                    'name': 'schema',
+                    'value': key_info['schema'],
+                }, {
                     'name': 'len',
                     'value': key_info['len'],
                 }, {
@@ -351,14 +376,32 @@ def cli():
                 import tempfile
                 key = kwargs.get('KEY')
                 try:
-                    value = db.get(key=key)
+                    key_info = db.explain(key=key, full_value=True)
+                    value = key_info['value']
                 except KeyError:
                     value = ''
+                    key_info = {}
+                if key_info.get('schema'):
+                    try:
+                        schema = db.get(key=key_info['schema'])
+                    except KeyError:
+                        schema = None
+                else:
+                    schema = None
                 editor = os.getenv('EDITOR', 'vi')
-                tmpfile = Path(f'{tempfile.gettempdir()}'
-                               f'/{random.randint(0,100000)}.tmp.yaml')
-                tmpfile.write_text('' if value == '' else yaml.
-                                   dump(value, default_flow_style=False))
+                if schema == {'type': 'code.python'}:
+                    suffix = '.py'
+                else:
+                    suffix = '.yaml'
+                fname = sha256(f'{db.db}/{key}'.encode()).hexdigest()
+                tmpfile = Path(f'{tempfile.gettempdir()}/{fname}.tmp{suffix}')
+                if value == '':
+                    tmpfile.write_text('')
+                elif suffix == '.yaml':
+                    tmpfile.write_text(
+                        yaml.dump(value, default_flow_style=False))
+                else:
+                    tmpfile.write_text(value)
                 try:
                     while True:
                         code = os.system(f'{editor} {tmpfile}')
@@ -367,9 +410,12 @@ def cli():
                             break
                         y = tmpfile.read_text()
                         try:
-                            data = yaml.safe_load(y)
+                            if suffix == '.yaml':
+                                data = yaml.safe_load(y)
+                            else:
+                                data = y
                         except:
-                            print_tb(force=True, delay=3)
+                            print_tb(force=True, delay=True)
                             continue
                         if data == value:
                             break
@@ -378,7 +424,7 @@ def cli():
                                 db.set(key=key, value=data)
                                 break
                             except:
-                                print_tb(force=True, delay=3)
+                                print_tb(force=True, delay=True)
                                 continue
                 finally:
                     try:
