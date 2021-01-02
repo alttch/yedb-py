@@ -361,9 +361,9 @@ class YEDB():
             return s
 
     def info(self):
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             d = self.dbinfo.copy()
             d['repair_recommended'] = self.repair_recommended
             try:
@@ -575,12 +575,12 @@ class YEDB():
             key: key name
             value: key value
         """
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         name = self._fmt_key(key)
         if debug:
             logger.debug(f'setting key {name}={_format_debug_value(value)}')
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             if not name:
                 raise ValueError('key name not specified')
             try:
@@ -623,11 +623,11 @@ class YEDB():
         """
         Rename key or category to new
         """
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         if debug:
             logger.debug(f'renaming key {key} to {dst_key}')
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             name = self._fmt_key(key)
             if not name:
                 raise ValueError('key name not specified')
@@ -735,12 +735,12 @@ class YEDB():
              default=KeyError,
              _extended_info=False,
              _check_exists_only=False):
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         name = self._fmt_key(name)
         if debug:
             logger.debug(f'reading key {name} value')
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             try:
                 l = self._key_locks[name]
             except KeyError:
@@ -787,9 +787,9 @@ class YEDB():
         Args:
             key: key name
         """
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             name = self._fmt_key(key)
             if not name:
                 raise ValueError('key name not specified')
@@ -811,9 +811,9 @@ class YEDB():
         Args:
             key: key name
         """
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             name = self._fmt_key(key)
             if not name:
                 raise ValueError('key name not specified')
@@ -841,8 +841,6 @@ class YEDB():
             key: key name
             recursive: also delete subkeys
         """
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         name = self._fmt_key(key)
         if name == '' and not recursive:
             return
@@ -850,6 +848,8 @@ class YEDB():
             logger.debug(f'deleting key {name}')
         dts = set()
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             try:
                 l = self._key_locks[name]
             except KeyError:
@@ -945,8 +945,6 @@ class YEDB():
             Generator object with tuples (key, True|False) where True means a
             key is repaired and False means a key is purged.
         """
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         if debug:
             logger.debug(f'repair operation requested')
         if not self.meta_info['checksums']:
@@ -955,6 +953,8 @@ class YEDB():
         # repair
         dts = set()
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             # find possible valid keys
             for d in self.db.glob('**/*.tmp'):
                 try:
@@ -996,13 +996,13 @@ class YEDB():
         Returns:
             Generator object with broken keys found and removed
         """
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         if debug:
             logger.debug(
                 f'purge operation requested, keep_broken: {keep_broken}')
         dts = set()
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             # clean up files
             for d in self.db.glob('**/*'):
                 if not d.is_dir() and d != self.lock_file and \
@@ -1041,12 +1041,12 @@ class YEDB():
         Returns:
             Generator object with broken keys found
         """
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         if debug:
             logger.debug(f'check operation requested')
         broken = []
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             for d in self.db.glob('**/*'):
                 if d.suffix == self.suffix or d.suffix == '.tmp':
                     try:
@@ -1070,10 +1070,10 @@ class YEDB():
             values are yielded. To unlock the db earlier, convert the returned
             generator into a list
         """
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         name = self._fmt_key(key)
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             for f in self.db.glob(f'{name}/**/*{self.suffix}'
                                   if name else f'**/*{self.suffix}'):
                 name = f.absolute().as_posix()[self.
@@ -1081,12 +1081,12 @@ class YEDB():
                 yield name
 
     def _delete_subkeys(self, name='', flush=False):
-        if not self._opened:
-            raise RuntimeError('database is not opened')
         name = self._fmt_key(name)
         import shutil
         dts = set()
         with self.lock:
+            if not self._opened:
+                raise RuntimeError('database is not opened')
             if name:
                 path = self.db / name
             else:
