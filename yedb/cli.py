@@ -579,7 +579,6 @@ def cli():
                                               (time.perf_counter() - start)),
                                         color='yellow')))
                     print()
-                print('Cached entries: ', db.info()['cached'])
                 print('cleaning up...')
                 db.delete(key='.benchmark', recursive=True)
             elif cmd == 'clear':
