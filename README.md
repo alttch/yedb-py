@@ -199,6 +199,31 @@ format as-is. This can give benefits to easily manage / repair keys manually,
 but loses data reliability, key set time (file mtime can still be used) and
 using built-in repair tools.
 
+## Schema validation
+
+As all keys are serialized values, they can be automatically schema-validated
+with JSON Schema (https://json-schema.org/).
+
+To create the validation schema for the chosen key, or key group, create a
+special key ".schema/path/to", which have to contain the valid JSON Schema.
+
+E.g. the schema, stored in the key ".schema/groups/group1" will be used for
+validating all keys in "groups/group1", including the group primary key. And
+the schema, stored in ".schema/groups/group1/key1" will be used for validating
+"groups/group1/key1" only (if key or subgroup schema is present, the parent
+schemas are omitted).
+
+YEDB also supports a non-standard scheme:
+
+```json
+    { "type" : "code.python" }
+```
+
+which requires the key to have valid Python code, without syntax errors.
+
+If schema validation fails on set or structure "with" statement exit, an
+exception yedb.SchemaValidationError is raised.
+
 ## Debugging
 
 Start client/server with DEBUG=1 env variable:
