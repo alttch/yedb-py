@@ -5,7 +5,7 @@
 ## Why YEDB?
 
 - Is it fast?
-- No
+- Fast to read, slow to write
 
 - Is it smart?
 - No
