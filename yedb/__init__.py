@@ -440,7 +440,7 @@ class YEDB():
                             checksums is None else False
                     new_db._init_meta()
                     new_db.meta_info['created'] = self.meta_info['created']
-                    for key in self.list_subkeys():
+                    for key in self.list_subkeys(hidden=True):
                         val = self._get(key, _extended_info=True)
                         new_db.set(key, val[0], stime=val[3])
                         yield (key, True)
@@ -1103,7 +1103,7 @@ class YEDB():
                             logger.debug(f'broken key file found: {d}')
                         yield str(d)[self._dbpath_len:-self._suffix_len]
 
-    def list_subkeys(self, key=''):
+    def list_subkeys(self, key='', hidden=False):
         """
         List subkeys of the specified key
 
@@ -1123,7 +1123,8 @@ class YEDB():
                                   if name else f'**/*{self.suffix}'):
                 name = f.absolute().as_posix()[self.
                                                _dbpath_len:-self._suffix_len]
-                yield name
+                if hidden or not name.startswith('.'):
+                    yield name
 
     def _delete_subkeys(self, name='', flush=False):
         name = self._fmt_key(name)
@@ -1137,7 +1138,7 @@ class YEDB():
             else:
                 path = self.db
             try:
-                for k in reversed(sorted(self.list_subkeys(name))):
+                for k in reversed(sorted(self.list_subkeys(name, hidden=True))):
                     self.delete(k, _no_flush=True)
                     try:
                         del self._key_locks[k]
@@ -1163,7 +1164,7 @@ class YEDB():
                 pass
             self._purge_cache_by_path(name)
 
-    def get_subkeys(self, key='', ignore_broken=False):
+    def get_subkeys(self, key='', ignore_broken=False, hidden=False):
         """
         Get subkeys of the specified key and their values
 
@@ -1181,7 +1182,7 @@ class YEDB():
         if not self._opened:
             raise RuntimeError('database is not opened')
         name = self._fmt_key(key)
-        for key in self.list_subkeys(name):
+        for key in self.list_subkeys(name, hidden=hidden):
             try:
                 yield key, self.get(key)
             except:

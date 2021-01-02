@@ -247,7 +247,9 @@ def cli():
                 if kwargs.get('recursive'):
                     data = []
                     for k, v in db.get_subkeys(
-                            key=key, ignore_broken=kwargs.get('ignore_broken')):
+                            key=key,
+                            ignore_broken=kwargs.get('ignore_broken'),
+                            hidden=kwargs.get('all')):
                         tp = type_name(v)
                         if isinstance(v, dict) or isinstance(v, list):
                             import json
@@ -407,7 +409,7 @@ def cli():
             elif cmd == 'ls':
                 key = kwargs.get('KEY')
                 data = []
-                for k in db.list_subkeys(key=key):
+                for k in db.list_subkeys(key=key, hidden=kwargs.get('all')):
                     data.append(dict(key=k))
                 if db.key_exists(key=key):
                     data.append(dict(key=key))
@@ -555,6 +557,10 @@ def cli():
     ap_get.add_argument('KEY', help='Key name or <key>:<field> for dict keys'
                        ).completer = KeyGroupCompleter()
     ap_get.add_argument('-r', '--recursive', action='store_true')
+    ap_get.add_argument('-a',
+                        '--all',
+                        action='store_true',
+                        help='Include hidden')
     ap_get.add_argument('-y',
                         '--full',
                         action='store_true',
@@ -604,6 +610,10 @@ def cli():
     ap_ls = sp.add_parser('ls', help='List keys')
     ap_ls.add_argument('KEY', help='Root key, optional',
                        nargs='?').completer = KeyCompleter()
+    ap_ls.add_argument('-a',
+                       '--all',
+                       action='store_true',
+                       help='Include hidden')
 
     ap_info = sp.add_parser('info', help='Database info')
     ap_info.add_argument('-y', '--full', action='store_true')
