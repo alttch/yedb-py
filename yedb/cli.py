@@ -284,7 +284,7 @@ def cli():
                     else:
                         try:
                             if as_raw:
-                                pretty_print(db.get(key=key))
+                                pretty_print(db.get(key=key), raw=True)
                                 return
                             else:
                                 key_info = db.explain(key=key, full_value=True)

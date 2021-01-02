@@ -391,9 +391,7 @@ class YEDB():
                     raise ChecksumError
             else:
                 checksum, date, value = s.split(maxsplit=2)
-                if (self.checksum_binary and self.calc_digest(value)
-                        == checksum) or (self.calc_digest(value).hex()
-                                         == checksum):
+                if self.calc_digest(value).hex() == checksum:
                     return self.loads(value)
                 else:
                     raise ChecksumError
@@ -413,9 +411,9 @@ class YEDB():
                 val += stime.to_bytes(8, 'little') + s
             else:
                 val += '\n' + stime.to_bytes(8, 'little').hex() + '\n' + s
-            return val, checksum, stime
+            return val
         else:
-            return s, None, None
+            return s
 
     def _purge_cache_by_path(self, path):
         if path != '' and not path.endswith('/'):
@@ -682,9 +680,10 @@ class YEDB():
                     except KeyError:
                         pass
                 self.validate_schema(key, value)
-                val, checksum, stime = self._dump_value(value, stime=stime)
-                self._write(key_file, val, flush=flush or self.auto_flush)
-                self.cache[key] = (value, checksum, stime)
+                self._write(key_file,
+                            self._dump_value(value, stime=stime),
+                            flush=flush or self.auto_flush)
+                self.cache[key] = value
 
     def copy(self, key, dst_key, delete=False):
         """
@@ -847,18 +846,20 @@ class YEDB():
                     return name in self.cache or key_file.exists()
                 else:
                     try:
+                        checksum = None
+                        stime = None
                         if debug:
                             logger.debug(f'reading key {name} file {key_file}')
-                        if name in self.cache:
+                        if not _extended_info and name in self.cache:
                             if debug:
                                 logger.debug(f'found cached key {name}')
                             try:
-                                value, checksum, stime = self.cache[name]
+                                value = self.cache[name]
                             except TypeError:
                                 raise FileNotFoundError
                         else:
                             s = self.read(key_file)
-                            if self.checksums and _extended_info:
+                            if self.checksums:
                                 if self.checksum_binary:
                                     checksum = s[:32]
                                     stime = s[32:40]
@@ -867,17 +868,13 @@ class YEDB():
                                     checksum = bytes.fromhex(checksum)
                                     stime = bytes.fromhex(stime)
                                 stime = int.from_bytes(stime, 'little')
-                            else:
-                                checksum = None
-                                stime = None
                             value = self._load_value(s)
-                            self.cache[name] = (value, checksum, stime)
+                            self.cache[name] = value
                         return (value,
                                 key_file.stat() if _extended_info else None,
                                 checksum, stime,
                                 key_file if _extended_info else None)
                     except FileNotFoundError:
-                        self.cache[name] = None
                         if default is KeyError:
                             raise KeyError(f'Key not found: {name}')
                         else:
@@ -1360,9 +1357,9 @@ class KeyDict:
                     if debug:
                         logger.debug(f'requesting to update {self.key_name}')
                     self.db.validate_schema(self.key_name, self.data)
-                    val, checksum, stime = self.db._dump_value(self.data)
-                    self.db._write(self.key_file, val)
-                    self.db.cache[self.key_name] = (self.data, checksum, stime)
+                    self.db._write(self.key_file,
+                                   self.db._dump_value(self.data))
+                    self.db.cache[self.key_name] = self.data
         self._lock.release()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1441,9 +1438,9 @@ class KeyList:
                     if debug:
                         logger.debug(f'requesting to update {self.key_name}')
                     self.db.validate_schema(self.key_name, self.data)
-                    val, checksum, stime = self.db._dump_value(self.data)
-                    self.db._write(self.key_file, val)
-                    self.db.cache[self.key_name] = (self.data, checksum, stime)
+                    self.db._write(self.key_file,
+                                   self.db._dump_value(self.data))
+                    self.db.cache[self.key_name] = self.data
         self._lock.release()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
