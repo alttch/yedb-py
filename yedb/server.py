@@ -153,6 +153,10 @@ class API:
                 r = format_error(-32602, str(e))
             except KeyError as e:
                 r = format_error(-32001, str(e))
+            except yedb.ChecksumError as e:
+                r = format_error(-32002, str(e))
+            except yedb.SchemaValidationError as e:
+                r = format_error(-32003, str(e))
             except Exception as e:
                 r = format_error(-32000, str(e))
                 if yedb.debug:

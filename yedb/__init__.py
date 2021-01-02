@@ -11,6 +11,7 @@ DEFAULT_CACHE_SIZE = 1000
 FMTS = ['json', 'yaml', 'msgpack', 'cbor', 'pickle']
 
 import threading
+import jsonschema
 
 g = threading.local()
 
@@ -42,7 +43,7 @@ class ChecksumError(Exception):
         return 'Checksum error'
 
 
-class SchemaError(Exception):
+class SchemaValidationError(Exception):
     pass
 
 
@@ -107,6 +108,10 @@ class YEDB():
             error_code = data['error']['code']
             if error_code == -32001:
                 raise KeyError(data['error']['message'])
+            elif error_code == -32002:
+                raise ChecksumError(data['error']['message'])
+            elif error_code == -32003:
+                raise SchemaValidationError(data['error']['message'])
             else:
                 raise RuntimeError(data['error']['message'])
         except KeyError:
@@ -218,7 +223,11 @@ class YEDB():
             self._parse_options(kwargs)
 
     def validate_schema(self, key, value):
-        pass
+        if key.startswith('.schema/') or key == '.schema':
+            try:
+                jsonschema.validators.validator_for(value).check_schema(value)
+            except jsonschema.exceptions.ValidationError as e:
+                raise SchemaValidationError(e)
 
     def _parse_options(self, options):
         for o in ['write_modified_only', 'auto_flush', 'lock_ex']:

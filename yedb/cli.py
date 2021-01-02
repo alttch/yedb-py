@@ -18,6 +18,7 @@ def cli():
         raise
     import sys
     import os
+    import time
     from pathlib import Path
 
     colored = neotermcolor.colored
@@ -41,12 +42,14 @@ def cli():
     def print_warn(text):
         cprint(text, color='yellow', attrs='bold', file=sys.stderr)
 
-    def print_tb(force=False):
+    def print_tb(force=False, delay=None):
         if yedb.debug or force:
             import traceback
             print_err(traceback.format_exc())
         else:
             print_err('FAILED')
+        if delay:
+            time.sleep(delay)
 
     def fmt_size(num, suffix='B'):
         for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
@@ -57,7 +60,6 @@ def cli():
 
     def fmt_time(ts, units='s'):
         from datetime import datetime
-        import time
         if units == 'ms':
             ts /= 1000
         elif units == 'us':
@@ -367,15 +369,17 @@ def cli():
                         try:
                             data = yaml.safe_load(y)
                         except:
-                            import time
-                            print_tb(force=True)
-                            time.sleep(3)
+                            print_tb(force=True, delay=3)
                             continue
                         if data == value:
                             break
                         else:
-                            db.set(key=key, value=data)
-                            break
+                            try:
+                                db.set(key=key, value=data)
+                                break
+                            except:
+                                print_tb(force=True, delay=3)
+                                continue
                 finally:
                     try:
                         tmpfile.unlink()
@@ -460,7 +464,6 @@ def cli():
                         pbar = tqdm(total=len(list(db.list_subkeys())))
                         db.close()
                         for key in db.convert_fmt(new_fmt, checksums=checksums):
-                            import time
                             pbar.update(1)
                         pbar.close()
                         db.open()
@@ -497,7 +500,6 @@ def cli():
                 pretty_print_table(sorted(data, key=lambda k: k['name']))
             elif cmd == 'benchmark':
                 db.delete(key='.benchmark', recursive=True)
-                import time
                 iters = 1000
                 test_arr = [777.777] * 100
                 test_dict = {f'v{n}': n * 777.777 for n in range(100)}
