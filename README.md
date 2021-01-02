@@ -227,4 +227,5 @@ https://yedb.readthedocs.io/
 * Dump/restore
 * Transport via UNIX socket
 * Add key schemas
+* Softer locking
 * Client/server complicated data structures
