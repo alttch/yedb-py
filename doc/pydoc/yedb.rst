@@ -81,6 +81,10 @@
       Remove value from list
       
 
+.. py:exception:: SchemaValidationError
+   :module: yedb
+
+
 .. py:class:: YEDB(dbpath, default_fmt='json', default_checksums=True, **kwargs)
    :module: yedb
 
@@ -178,12 +182,13 @@
                 may miss some keys or they may be broken.
       
    
-   .. py:method:: YEDB.explain(key)
+   .. py:method:: YEDB.explain(key, full_value=False)
       :module: yedb
    
       Get key value + extended info
       
       :param name: key name
+      :param full_value: obtain full key value
       
       :returns: dict(value, info=Path.stat, checksum=checksum, file=Path)
       
@@ -276,6 +281,8 @@
       
       Also deletes unnecessary files (e.g. left after format conversion) and
       checks all entries.
+      
+      The command also clears memory cache.
       
       :param keep_broken: keys are not tested, broken keys are not removed
       
