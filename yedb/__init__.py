@@ -200,8 +200,8 @@ class YEDB():
         Key parts are split with "/" symbols
 
         If dbpath is specified as HTTP/HTTPS URI, the object transforms itself
-        into JSON RPC client (methods, not listed at yedb.server.METHODS become
-        unimplemented)
+        into JSON RPC client (methods, not listed at yedb.async_server.METHODS
+        become unimplemented)
 
         Args:
             dbpath: database directory
@@ -241,7 +241,7 @@ class YEDB():
                 self.http_auth = Auth(username, password)
             else:
                 self.http_auth = None
-            from yedb.server import METHODS
+            from yedb.async_server import METHODS
             for f in dir(self):
                 fn = getattr(self, f)
                 if fn.__class__.__name__ == 'method':
@@ -1217,7 +1217,7 @@ class YEDB():
 
     def list_subkeys(self, key='', hidden=False):
         """
-        List subkeys of the specified key
+        List subkeys of the specified key (including the key itself)
 
         Args:
             key: key name, if not specified, all keys are returned
@@ -1237,6 +1237,8 @@ class YEDB():
                                                _dbpath_len:-self._suffix_len]
                 if hidden or not name.startswith('.'):
                     yield name
+            if self.key_exists(key):
+                yield key
 
     def _delete_subkeys(self, name='', flush=False):
         name = self._fmt_key(name)
@@ -1278,7 +1280,8 @@ class YEDB():
 
     def get_subkeys(self, key='', ignore_broken=False, hidden=False):
         """
-        Get subkeys of the specified key and their values
+        Get subkeys of the specified key and their values (including the key
+        itself)
 
         Args:
             key: key name, if not specified, all keys / values are returned
@@ -1300,6 +1303,23 @@ class YEDB():
             except:
                 if not ignore_broken:
                     raise
+
+    def dump_keys(self, key=''):
+        """
+        Equal to get_subkeys(ignore_broken=True, hidden=False)
+        """
+        return self.get_subkeys(key=key, ignore_broken=True, hidden=True)
+
+    def load_keys(self, data):
+        """
+        Loads keys
+
+        Args:
+            data: list or generator of key/value pairs (lists or tuples)
+        """
+        with self.lock:
+            for d in data:
+                self.set(key=d[0], value=d[1])
 
 
 class KeyDict:

@@ -59,7 +59,8 @@ REQ_MSGPACK = 2
 
 METHODS = [
     'test', 'get', 'set', 'list_subkeys', 'get_subkeys', 'copy', 'rename',
-    'key_exists', 'explain', 'delete', 'purge', 'check', 'repair', 'info'
+    'key_exists', 'explain', 'delete', 'purge', 'check', 'repair', 'info',
+    'dump_keys', 'load_keys'
 ]
 
 

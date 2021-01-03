@@ -133,6 +133,8 @@ def cli():
                 'delete',
                 'copy',
                 'rename',
+                'dump',
+                'load',
                 'ls',
                 'info',
                 'benchmark',
@@ -267,8 +269,6 @@ def cli():
                                  type=tp,
                                  value=v if kwargs.get('full') else
                                  yedb._format_debug_value(v)))
-                    if db.key_exists(key=key):
-                        data.append(dict(key=key, value=db.get(key=key)))
                     pretty_print_table(sorted(data, key=lambda k: k['key']))
                 else:
                     as_raw = kwargs.get('raw')
@@ -305,6 +305,56 @@ def cli():
                                  if schema == {'type': 'code.python'} else None)
             elif cmd == 'cat':
                 dispatcher(cmd='get', KEY=kwargs.get('KEY'), raw=True)
+            elif cmd == 'dump':
+                import msgpack
+                key = kwargs.get('KEY')
+                if kwargs.get('FILE') == '-':
+                    f = None
+                    if sys.stdout.isatty():
+                        raise RuntimeError('stdout is a tty')
+                else:
+                    f = open(kwargs.get('FILE'), 'wb')
+                fd = f if f else sys.stdout.buffer
+                c = 0
+                try:
+                    for v in db.dump_keys(key=key):
+                        data = msgpack.dumps(v)
+                        fd.write(len(data).to_bytes(4, 'little') + data)
+                        c += 1
+                finally:
+                    if f:
+                        f.close()
+                print(f'{c} subkeys of {key} dumped')
+            elif cmd == 'load':
+                import msgpack
+                if kwargs.get('FILE') == '-':
+                    f = None
+                    if sys.stdin.isatty():
+                        raise RuntimeError('stdin is a tty')
+                else:
+                    f = open(kwargs.get('FILE'), 'rb')
+                fd = f if f else sys.stdin.buffer
+                buf = []
+                c = 0
+                try:
+                    while True:
+                        l = fd.read(4)
+                        if not l:
+                            break
+                        data = msgpack.loads(fd.read(int.from_bytes(
+                            l, 'little')),
+                                             raw=False)
+                        buf.append(data)
+                        c += 1
+                        if sys.getsizeof(buf) > 32768:
+                            db.load_keys(data=buf)
+                            buf.clear()
+                    if buf:
+                        db.load_keys(data=buf)
+                finally:
+                    if f:
+                        f.close()
+                print(f'{c} keys loaded')
             elif cmd == 'copy':
                 db.copy(key=kwargs.get('KEY'),
                         dst_key=kwargs.get('DST_KEY'),
@@ -461,8 +511,6 @@ def cli():
                 data = []
                 for k in db.list_subkeys(key=key, hidden=kwargs.get('all')):
                     data.append(dict(key=k))
-                if db.key_exists(key=key):
-                    data.append(dict(key=key))
                 pretty_print_table(sorted(data, key=lambda k: k['key']))
             elif cmd == 'check':
                 broken_found = False
@@ -665,6 +713,13 @@ def cli():
                        action='store_true',
                        help='Include hidden')
 
+    ap_dump = sp.add_parser('dump', help='Dump key and its subkeys')
+    ap_dump.add_argument('KEY', help='Key name').completer = KeyGroupCompleter()
+    ap_dump.add_argument('FILE', help='File name ("-" for stdout)')
+
+    ap_dump = sp.add_parser('load', help='Load dumped keys')
+    ap_dump.add_argument('FILE', help='File name ("-" for stdin)')
+
     ap_info = sp.add_parser('info', help='Database info')
     ap_info.add_argument('-y', '--full', action='store_true')
 
@@ -699,9 +754,8 @@ def cli():
             ap.launch()
         else:
             if db and db.info()['repair_recommended']:
-                print_warn(
-                    'database has not been closed correctly, repair is recommended'
-                )
+                print_warn('database has not been closed correctly, '
+                           'repair is recommended')
             import readline
             history_file = os.path.expanduser('~') + '/.yedb_history'
             try:
