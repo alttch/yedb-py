@@ -130,6 +130,8 @@ def cli():
 
     options = {}
 
+    ap = icli.ArgumentParser()
+
     try:
         db_dir = sys.argv[1]
         if db_dir.startswith('-'):
@@ -144,7 +146,6 @@ def cli():
                 'copy',
                 'rename',
                 'dump',
-                'load',
                 'ls',
                 'info',
                 'benchmark',
@@ -318,55 +319,85 @@ def cli():
             elif cmd == 'cat':
                 dispatcher(cmd='get', KEY=kwargs.get('KEY'), raw=True)
             elif cmd == 'dump':
-                import msgpack
-                key = kwargs.get('KEY')
-                if kwargs.get('FILE') == '-':
-                    f = None
-                    if sys.stdout.isatty():
-                        raise RuntimeError('stdout is a tty')
-                else:
-                    f = open(kwargs.get('FILE'), 'wb')
-                fd = f if f else sys.stdout.buffer
-                c = 0
-                try:
-                    for v in db.dump_keys(key=key):
-                        data = msgpack.dumps(v)
-                        fd.write(len(data).to_bytes(4, 'little') + data)
-                        c += 1
-                finally:
-                    if f:
-                        f.close()
-                print(f'{c} subkey(s) of {key} dumped')
-            elif cmd == 'load':
-                import msgpack
-                if kwargs.get('FILE') == '-':
-                    f = None
-                    if sys.stdin.isatty():
-                        raise RuntimeError('stdin is a tty')
-                else:
-                    f = open(kwargs.get('FILE'), 'rb')
-                fd = f if f else sys.stdin.buffer
-                buf = []
-                c = 0
-                try:
-                    while True:
-                        l = fd.read(4)
-                        if not l:
-                            break
-                        data = msgpack.loads(fd.read(int.from_bytes(
-                            l, 'little')),
-                                             raw=False)
-                        buf.append(data)
-                        c += 1
-                        if sys.getsizeof(buf) > 32768:
+                func = kwargs.get('_func')
+                if func is None:
+                    ap.print_help()
+                elif func == 'save':
+                    import msgpack
+                    key = kwargs.get('KEY')
+                    if kwargs.get('FILE') == '-':
+                        f = None
+                        if sys.stdout.isatty():
+                            raise RuntimeError('stdout is a tty')
+                    else:
+                        f = open(kwargs.get('FILE'), 'wb')
+                    fd = f if f else sys.stdout.buffer
+                    c = 0
+                    try:
+                        for v in db.dump_keys(key=key):
+                            data = msgpack.dumps(v)
+                            fd.write(len(data).to_bytes(4, 'little') + data)
+                            c += 1
+                    finally:
+                        if f:
+                            f.close()
+                    print(f'{c} subkey(s) of {key} dumped')
+                elif func == 'load':
+                    import msgpack
+                    if kwargs.get('FILE') == '-':
+                        f = None
+                        if sys.stdin.isatty():
+                            raise RuntimeError('stdin is a tty')
+                    else:
+                        f = open(kwargs.get('FILE'), 'rb')
+                    fd = f if f else sys.stdin.buffer
+                    buf = []
+                    c = 0
+                    try:
+                        while True:
+                            l = fd.read(4)
+                            if not l:
+                                break
+                            data = msgpack.loads(fd.read(int.from_bytes(
+                                l, 'little')),
+                                                 raw=False)
+                            buf.append(data)
+                            c += 1
+                            if sys.getsizeof(buf) > 32768:
+                                db.load_keys(data=buf)
+                                buf.clear()
+                        if buf:
                             db.load_keys(data=buf)
-                            buf.clear()
-                    if buf:
-                        db.load_keys(data=buf)
-                finally:
-                    if f:
-                        f.close()
-                print(f'{c} key(s) loaded')
+                    finally:
+                        if f:
+                            f.close()
+                    print(f'{c} key(s) loaded')
+                elif func == 'view':
+                    import msgpack
+                    import json
+                    full = kwargs.get('full')
+                    if kwargs.get('FILE') == '-':
+                        f = None
+                        if sys.stdin.isatty():
+                            raise RuntimeError('stdin is a tty')
+                    else:
+                        f = open(kwargs.get('FILE'), 'rb')
+                    fd = f if f else sys.stdin.buffer
+                    try:
+                        while True:
+                            l = fd.read(4)
+                            if not l:
+                                break
+                            data = msgpack.loads(fd.read(int.from_bytes(
+                                l, 'little')),
+                                                 raw=False)
+                            if full:
+                                print(json.dumps(data))
+                            else:
+                                print(data[0])
+                    finally:
+                        if f:
+                            f.close()
             elif cmd == 'copy':
                 db.copy(key=kwargs.get('KEY'),
                         dst_key=kwargs.get('DST_KEY'),
@@ -677,8 +708,6 @@ def cli():
     need_launch = len(
         sys.argv) > 1 or not db_path or str(db_path).startswith('-')
 
-    ap = icli.ArgumentParser()
-
     sp = ap.add_subparsers(dest='cmd')
 
     ap_get = sp.add_parser('get', help='Get key value')
@@ -744,11 +773,20 @@ def cli():
                        help='Include hidden')
 
     ap_dump = sp.add_parser('dump', help='Dump key and its subkeys')
-    ap_dump.add_argument('KEY', help='Key name').completer = KeyGroupCompleter()
-    ap_dump.add_argument('FILE', help='File name ("-" for stdout)')
+    sp_dump = ap_dump.add_subparsers(dest='_func')
 
-    ap_dump = sp.add_parser('load', help='Load dumped keys')
-    ap_dump.add_argument('FILE', help='File name ("-" for stdin)')
+    ap_dump_save = sp_dump.add_parser('save', help='Save key dump')
+
+    ap_dump_save.add_argument('KEY',
+                              help='Key name').completer = KeyGroupCompleter()
+    ap_dump_save.add_argument('FILE', help='File name ("-" for stdout)')
+
+    ap_dump_load = sp_dump.add_parser('load', help='Load dumped keys')
+    ap_dump_load.add_argument('FILE', help='File name ("-" for stdin)')
+
+    ap_dump_view = sp_dump.add_parser('view', help='View dumped keys')
+    ap_dump_view.add_argument('FILE', help='File name ("-" for stdin)')
+    ap_dump_view.add_argument('-y', '--full', action='store_true')
 
     ap_info = sp.add_parser('info', help='Database info')
     ap_info.add_argument('-y', '--full', action='store_true')
