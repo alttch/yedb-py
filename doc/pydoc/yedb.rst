@@ -261,12 +261,13 @@
                 generator into a list
       
    
-   .. py:method:: YEDB.load_keys(data)
+   .. py:method:: YEDB.load_keys(data, use_schema=False)
       :module: yedb
    
       Loads keys
       
       :param data: list or generator of key/value pairs (lists or tuples)
+      :param use_schema: use schema validation (default: False)
       
    
    .. py:method:: YEDB.open(auto_create=True, auto_repair=False, _skip_lock=False, _force_lock_ex=False, _skip_meta=False, **kwargs)
@@ -324,7 +325,7 @@
                 key is repaired and False means a key is purged.
       
    
-   .. py:method:: YEDB.set(key, value, flush=False, stime=None)
+   .. py:method:: YEDB.set(key, value, flush=False, stime=None, _ignore_schema=False)
       :module: yedb
    
       Set key to value
