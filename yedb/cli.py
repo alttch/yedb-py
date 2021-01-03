@@ -324,7 +324,7 @@ def cli():
                 finally:
                     if f:
                         f.close()
-                print(f'{c} subkeys of {key} dumped')
+                print(f'{c} subkey(s) of {key} dumped')
             elif cmd == 'load':
                 import msgpack
                 if kwargs.get('FILE') == '-':
@@ -354,7 +354,7 @@ def cli():
                 finally:
                     if f:
                         f.close()
-                print(f'{c} keys loaded')
+                print(f'{c} key(s) loaded')
             elif cmd == 'copy':
                 db.copy(key=kwargs.get('KEY'),
                         dst_key=kwargs.get('DST_KEY'),

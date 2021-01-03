@@ -256,7 +256,7 @@ https://yedb.readthedocs.io/
 
 ## TODO
 
-* Async core
+* View dump
 * Softer locking & async read/writes
 * Client/server complicated data structures
 * Rust library
