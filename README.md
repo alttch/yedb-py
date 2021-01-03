@@ -103,7 +103,8 @@ finally:
 (Requires manually installing "aiohttp" Python module)
 
 ```shell
-# listen to localhost:8870 (default)
+# listen to localhost:8870 (default), to bind UNIX socket, specify the full
+# socket path
 python3 -m yedb.async_server /path/to/db
 ```
 
@@ -124,6 +125,12 @@ with YEDB('http://localhost:8870') as db:
 YEDB uses JSON RPC (https://www.jsonrpc.org/) as the API protocol. Any method,
 listed in yedb.server.METHODS can be called. Payloads can be packed either with
 JSON or with MessagePack.
+
+If working via UNIX socket:
+
+* only MessagePack payload encoding is supported
+
+* Request/response frame format: FRAME\_LEN(little-endian) + frame
 
 ### Working with complicated data structures (embedded only)
 
