@@ -130,7 +130,7 @@ If working via UNIX socket:
 
 * only MessagePack payload encoding is supported
 
-* Request/response frame format: FRAME\_LEN(little-endian) + frame
+* Request/response format: FRAME\_LEN(32-bit little-endian) + frame
 
 ### Working with complicated data structures (embedded only)
 
