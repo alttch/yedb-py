@@ -221,6 +221,13 @@ which requires the key to have valid Python code, without syntax errors.
 If schema validation fails on set or structure "with" statement exit, an
 exception yedb.SchemaValidationError is raised.
 
+## Backup/restore
+
+Use "dump\_keys" / "load\_keys" methods. If dump is created with CLI (requires
+"msgpack" Python module for dump), it has the format:
+
+    KEY\_LEN(32-bit little-endian) + KEY
+
 ## Debugging
 
 Start client/server with DEBUG=1 env variable:
