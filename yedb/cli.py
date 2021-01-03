@@ -147,7 +147,7 @@ def cli():
             sys.argv[1] = '-h'
             raise ValueError
         if db_dir.startswith('http://') or db_dir.startswith('https://'):
-            options['http_timeout'] = 3600
+            options['timeout'] = 3600
             remote = True
             db_path = db_dir
             db_ps = db_dir.split('//', 1)[-1]
