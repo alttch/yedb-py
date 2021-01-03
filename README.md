@@ -228,7 +228,7 @@ Full backup: simply backup the database directory with any preferred method.
 Partial/server backup:
 
 Use "dump\_keys" / "load\_keys" methods. If dump is created with CLI (requires
-"msgpack" Python module for dump), it has the format:
+"msgpack" Python module for that), it has the format:
 
     KEY_LEN(32-bit little-endian) + KEY
 
