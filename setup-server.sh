@@ -5,7 +5,7 @@ YEDB_VERSION=0.0.40
 REQUIRED="realpath python3 curl"
 MODS="yedb==${YEDB_VERSION} msgpack==1.0.2 aiohttp==3.7.3"
 
-MODS_CLIENT="icli neotermcolor rapidtables pyyaml tqdm pygments requests==2.21.0"
+MODS_CLIENT="icli neotermcolor rapidtables pyyaml tqdm pygments requests==2.21.0 getch"
 
 [ -z "$YEDBD_BIND" ] && YEDBD_BIND=http://127.0.0.1:8870
 
