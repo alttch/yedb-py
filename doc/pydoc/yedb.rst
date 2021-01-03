@@ -116,7 +116,7 @@
    :param dbpath: database directory
    :param default_fmt: default data format
    :param default_checksums: use SHA256 checksums by default
-   :param http_timeout: server timeout (for client/server mode)
+   :param timeout: server timeout (for client/server mode)
    :param http_username: http username
    :param http_password: http password
    :param http_auth: auth type (basic or digest)
@@ -254,10 +254,9 @@
                 generator into a list
       
    
-   .. py:method:: YEDB.open(timeout=None, auto_create=True, auto_repair=False, _skip_lock=False, _force_lock_ex=False, _skip_meta=False, **kwargs)
+   .. py:method:: YEDB.open(auto_create=True, auto_repair=False, _skip_lock=False, _force_lock_ex=False, _skip_meta=False, **kwargs)
       :module: yedb
    
-      :param timeout: max open timeout
       :param auto_create: automatically create db
       :param auto_repair: automatically repair db
       :param auto_flush: always flush written data to disk
