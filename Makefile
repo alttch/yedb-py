@@ -1,4 +1,4 @@
-VERSION=0.0.41
+VERSION=0.0.42
 
 all:
 	@echo "Select target"
