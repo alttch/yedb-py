@@ -248,6 +248,5 @@ https://yedb.readthedocs.io/
 
 * Rust library
 * Dump/restore
-* Transport via UNIX socket
 * Softer locking & async read/writes
 * Client/server complicated data structures
