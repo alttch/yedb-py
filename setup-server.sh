@@ -7,8 +7,7 @@ MODS="yedb==${YEDB_VERSION} msgpack==1.0.2 aiohttp==3.7.3"
 
 MODS_CLIENT="icli neotermcolor rapidtables pyyaml tqdm pygments requests==2.21.0"
 
-[ -z "$YEDBD_HOST" ] && YEDBD_HOST=127.0.0.1
-[ -z "$YEDBD_PORT" ] && YEDBD_PORT=8870
+[ -z "$YEDBD_BIND" ] && YEDBD_BIND=http://127.0.0.1:8870
 
 check_required_exec() {
   p=$1
@@ -63,7 +62,7 @@ cat > "$DIR_ME/yedb-server" << EOF
 #!/bin/sh
 
 "$DIR_ME/venv/bin/python3" -m yedb.async_server \\
---pid-file "$DIR_ME/var/yedbd.pid" --host $YEDBD_HOST --port $YEDBD_PORT \\
+--pid-file "$DIR_ME/var/yedbd.pid" -B $YEDBD_BIND \\
 --default-fmt msgpack "$DIR_ME/var/db"
 EOF
 )|| exit 6
@@ -74,7 +73,7 @@ chmod +x "$DIR_ME/yedb-server" || exit 6
 cat > "$DIR_ME/yedb" << EOF
 #!/bin/sh
 
-"$DIR_ME/venv/bin/yedb" "http://$YEDBD_HOST:$YEDBD_PORT" "\$@"
+"$DIR_ME/venv/bin/yedb" "$YEDBD_BIND" "\$@"
 EOF
 )|| exit 6
 
@@ -102,7 +101,7 @@ ExecStart="$DIR_ME/yedb-server"
 WantedBy=multi-user.target
 EOF
 )  || exit 7
-  HAS_SERVICE=1
+HAS_SERVICE=1
 else
   echo
   echo "Running under the regular user. Skipped service configuration"

@@ -12,7 +12,6 @@ import platform
 import asyncio
 from types import GeneratorType
 from pathlib import Path
-from aiohttp import web
 
 from logging.handlers import SysLogHandler
 
@@ -174,6 +173,7 @@ async def handle_jrpc(payload, remote_name):
 
 
 async def handle_web(request):
+    from aiohttp import web
 
     ct = request.content_type
     if ct == 'application/msgpack' or ct == 'application/x-msgpack':
@@ -243,11 +243,14 @@ def start(bind='127.0.0.1',
             pass
         app = None
     else:
+        if bind.startswith('http://') or bind.startswith('https://'):
+            bind = bind[bind.find('//') + 2:]
         try:
             host, port = bind.rsplit(':', 1)
         except ValueError:
             host = bind
             port = DEFAULT_PORT
+        from aiohttp import web
         app = web.Application()
         app.add_routes([web.post('/', handle_web)])
         socket = None

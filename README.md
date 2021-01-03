@@ -100,17 +100,6 @@ finally:
 
 ## Client/server
 
-### Classic threaded server
-
-(Requires manually installing "cherrypy" Python module)
-
-```shell
-# listen to localhost:8870 (default)
-python3 -m yedb.server /path/to/db
-```
-
-### Async server
-
 (Requires manually installing "aiohttp" Python module)
 
 ```shell
