@@ -10,6 +10,8 @@ DEFAULT_SOCKET_TIMEOUT = 5
 
 DEFAULT_CACHE_SIZE = 1000
 
+SOCKET_BUF = 8192
+
 FMTS = ['json', 'yaml', 'msgpack', 'cbor', 'pickle']
 
 import threading
@@ -110,15 +112,22 @@ class YEDB():
                 if db_socket._closed:
                     db_socket = _reopen_socket()
                 try:
-                    db_socket.send(len(data).to_bytes(4, 'little') + data)
-                except BrokenPipeError:
-                    db_socket = _reopen_socket()
-                    db_socket.send(len(data).to_bytes(4, 'little') + data)
-                frame = db_socket.recv(4)
-                frame_len = int.from_bytes(frame, 'little')
-                response = db_socket.recv(frame_len)
-                db_socket.close()
-                data = msgpack.loads(response, raw=False)
+                    try:
+                        db_socket.sendall(
+                            len(data).to_bytes(4, 'little') + data)
+                    except BrokenPipeError:
+                        db_socket = _reopen_socket()
+                        db_socket.sendall(
+                            len(data).to_bytes(4, 'little') + data)
+                    frame = db_socket.recv(4)
+                    frame_len = int.from_bytes(frame, 'little')
+                    response = b''
+                    while len(response) < frame_len:
+                        response += db_socket.recv(SOCKET_BUF)
+                    data = msgpack.loads(response, raw=False)
+                except:
+                    db_socket.close()
+                    raise
         else:
             try:
                 post = g.session.post

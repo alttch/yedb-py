@@ -9,6 +9,7 @@ import platform
 import os
 import time
 import platform
+import asyncio
 from types import GeneratorType
 from pathlib import Path
 from aiohttp import web
@@ -203,27 +204,29 @@ async def handle_web(request):
 async def handle_unix(reader, writer):
     import msgpack
     try:
-        try:
-            frame = await reader.read(4)
-            frame_len = int.from_bytes(frame, 'little')
-            data = await reader.read(frame_len)
-        except asyncio.TimeoutError:
-            logger.error('Socket timeout error')
-            writer.close()
-        payload = msgpack.loads(data, raw=False)
-        try:
+        while True:
+            data = b''
+            try:
+                frame = await reader.read(4)
+                if not frame:
+                    break
+                frame_len = int.from_bytes(frame, 'little')
+                while len(data) < frame_len:
+                    data += await reader.read(yedb.SOCKET_BUF)
+            except asyncio.TimeoutError:
+                logger.error('Socket timeout error')
+                return
+            payload = msgpack.loads(data, raw=False)
             result = await handle_jrpc(payload, 'localhost')
-        except Exception as e:
-            logger.error(e)
-            log_traceback()
-            return
-        if result:
-            data = msgpack.dumps(result)
-            writer.write(len(data).to_bytes(4, 'little') + data)
-            await writer.drain()
+            if result:
+                data = msgpack.dumps(result)
+                writer.write(len(data).to_bytes(4, 'little') + data)
+                await writer.drain()
     except Exception as e:
         logger.error(e)
         log_traceback()
+    finally:
+        writer.close()
 
 
 def start(bind='127.0.0.1',
