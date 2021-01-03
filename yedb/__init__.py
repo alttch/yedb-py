@@ -688,7 +688,7 @@ class YEDB():
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def set(self, key, value, flush=False, stime=None):
+    def set(self, key, value, flush=False, stime=None, _ignore_schema=False):
         """
         Set key to value
 
@@ -726,7 +726,8 @@ class YEDB():
                             return
                     except KeyError:
                         pass
-                self.validate_schema(key, value)
+                if not _ignore_schema:
+                    self.validate_schema(key, value)
                 self._write(key_file,
                             self._dump_value(value, stime=stime),
                             flush=flush or self.auto_flush)
@@ -1319,7 +1320,7 @@ class YEDB():
         """
         with self.lock:
             for d in data:
-                self.set(key=d[0], value=d[1])
+                self.set(key=d[0], value=d[1], _ignore_schema=True)
 
 
 class KeyDict:
