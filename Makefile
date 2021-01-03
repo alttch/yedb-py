@@ -35,7 +35,7 @@ docs:
 	pydoc2rst doc/pydoc/tpl_yedb.rst doc/pydoc/yedb.rst /opt/yedb
 
 push:
-	git commit -a -m ${VERSION}
+	git commit -a -m "v${VERSION}"
 	git push
 
 pub: d test docs pub-pypi sver push
