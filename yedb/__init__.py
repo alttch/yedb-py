@@ -1311,16 +1311,17 @@ class YEDB():
         """
         return self.get_subkeys(key=key, ignore_broken=True, hidden=True)
 
-    def load_keys(self, data):
+    def load_keys(self, data, use_schema=False):
         """
         Loads keys
 
         Args:
             data: list or generator of key/value pairs (lists or tuples)
+            use_schema: use schema validation (default: False)
         """
         with self.lock:
             for d in data:
-                self.set(key=d[0], value=d[1], _ignore_schema=True)
+                self.set(key=d[0], value=d[1], _ignore_schema=not use_schema)
 
 
 class KeyDict:
