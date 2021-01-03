@@ -7,6 +7,8 @@ ver:
 	find . -type f -name "*.py" -exec \
 			sed -i "s/^__version__ = .*/__version__ = '${VERSION}'/g" {} \;
 	find ./bin -type f -exec sed -i "s/^__version__ = .*/__version__ = '${VERSION}'/g" {} \;
+
+sver:
 	sed -i "s/^YEDB_VERSION=.*/YEDB_VERSION="${VERSION}"/g" setup-server.sh
 
 clean:
@@ -32,4 +34,8 @@ test:
 docs:
 	pydoc2rst doc/pydoc/tpl_yedb.rst doc/pydoc/yedb.rst /opt/yedb
 
-pub: d test docs pub-pypi
+push:
+	git commit -a -m ${VERSION}
+	git push
+
+pub: d test docs pub-pypi sver push

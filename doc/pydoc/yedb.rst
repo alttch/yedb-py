@@ -110,8 +110,8 @@
    Key parts are split with "/" symbols
    
    If dbpath is specified as HTTP/HTTPS URI, the object transforms itself
-   into JSON RPC client (methods, not listed at yedb.server.METHODS become
-   unimplemented)
+   into JSON RPC client (methods, not listed at yedb.async_server.METHODS
+   become unimplemented)
    
    :param dbpath: database directory
    :param default_fmt: default data format
@@ -182,6 +182,12 @@
                 may miss some keys or they may be broken.
       
    
+   .. py:method:: YEDB.dump_keys(key='')
+      :module: yedb
+   
+      Equal to get_subkeys(ignore_broken=True, hidden=False)
+      
+   
    .. py:method:: YEDB.explain(key, full_value=False)
       :module: yedb
    
@@ -206,7 +212,8 @@
    .. py:method:: YEDB.get_subkeys(key='', ignore_broken=False, hidden=False)
       :module: yedb
    
-      Get subkeys of the specified key and their values
+      Get subkeys of the specified key and their values (including the key
+      itself)
       
       :param key: key name, if not specified, all keys / values are returned
       :param ignore_broken: do not raise errors on broken keys
@@ -245,13 +252,21 @@
    .. py:method:: YEDB.list_subkeys(key='', hidden=False)
       :module: yedb
    
-      List subkeys of the specified key
+      List subkeys of the specified key (including the key itself)
       
       :param key: key name, if not specified, all keys are returned
       
       :returns: A generator object is returned, so the db becomes locked until all
                 values are yielded. To unlock the db earlier, convert the returned
                 generator into a list
+      
+   
+   .. py:method:: YEDB.load_keys(data)
+      :module: yedb
+   
+      Loads keys
+      
+      :param data: list or generator of key/value pairs (lists or tuples)
       
    
    .. py:method:: YEDB.open(auto_create=True, auto_repair=False, _skip_lock=False, _force_lock_ex=False, _skip_meta=False, **kwargs)

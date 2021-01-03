@@ -28,6 +28,12 @@ class DummyLock:
     def __exit__(self, type, value, traceback):
         pass
 
+    def acquire(self, *args, **kwargs):
+        return
+
+    def release(self, *args, **kwargs):
+        return
+
 
 yedb.RLock = DummyLock
 
