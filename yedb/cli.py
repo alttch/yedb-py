@@ -743,7 +743,7 @@ def cli():
         'NEW_FORMAT', choices=['json', 'cbor', 'msgpack', 'yaml', 'pickle'])
     ap_convert.add_argument('--disable-checksums', action='store_true')
 
-    ap.ps = '{}> '.format(colored(db_ps, color='yellow'))
+    ap.ps = '{}> '.format(colored(os.getenv('YEDB_PS', db_ps), color='yellow'))
 
     ap.run = dispatcher
 
