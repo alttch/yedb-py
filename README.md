@@ -85,134 +85,134 @@ Use env to specify extra options:
 from yedb import YEDB
 
 with YEDB('/path/to/db', auto_repair=True) as db:
-# do some stuff
+    # do some stuff
 
 # OR
 
-    db = YEDB('/path/to/db')
+db = YEDB('/path/to/db')
 db.open(auto_repair=True)
-    try:
-# do some stuff
+try:
+    # do some stuff
 finally:
-db.close()
-    ```
+    db.close()
+```
 
 ## Client/server
 
-    (Requires manually installing "aiohttp" Python module)
+(Requires manually installing "aiohttp" Python module, unless binding to UNIX
+socket)
 
-    ```shell
+```shell
 # listen to localhost:8870 (default), to bind UNIX socket, specify the full
 # socket path
-    python3 -m yedb.async_server /path/to/db
-    ```
+python3 -m yedb.async_server /path/to/db
+```
 
 ### Connect a client
 
-    (the built-in client requires "requests" Python module to be installed
-     manually)
+(the built-in client requires "requests" Python module to be installed
+manually)
 
-    ```python
-    from yedb import YEDB
+```python
+from yedb import YEDB
 
-    with YEDB('http://localhost:8870') as db:
+with YEDB('http://localhost:8870') as db:
 # do some stuff, remember to send all parameters as kwargs
-    ```
+```
 
 ### Building own client
 
-    YEDB uses JSON RPC (https://www.jsonrpc.org/) as the API protocol. Any method,
-    listed in yedb.server.METHODS can be called. Payloads can be packed either with
-    JSON or with MessagePack.
+YEDB uses JSON RPC (https://www.jsonrpc.org/) as the API protocol. Any method,
+listed in yedb.server.METHODS can be called. Payloads can be packed either with
+JSON or with MessagePack.
 
-    If working via UNIX socket:
+If working via UNIX socket:
 
-    * only MessagePack payload encoding is supported
+* only MessagePack payload encoding is supported
 
-    * Request/response format: FRAME\_LEN(32-bit little-endian) + frame
+* Request/response format: FRAME\_LEN(32-bit little-endian) + frame
 
 ### Working with complicated data structures (embedded only)
 
-    ```python
-    from yedb import YEDB
+```python
+from yedb import YEDB
 
-    with YEDB('/path/to/db') as db:
+with YEDB('/path/to/db') as db:
     with db.key('path/to/keydict) as key:
-    key.set('field', 'value')
-# If modified, the key is automatically saved at the end of the statement.
+        key.set('field', 'value')
+    # If modified, the key is automatically saved at the end of the statement.
+```
 
-    ```
-
-    Note: key objects are thread-unsafe.
+Note: key objects are thread-unsafe.
 
 ## Engine formats
 
-    The default engine data format is JSON
-    (https://github.com/python-rapidjson/python-rapidjson is detected and imported
-     automatically if present)
+The default engine data format is JSON
+(https://github.com/python-rapidjson/python-rapidjson is detected and imported
+ automatically if present)
 
-    Other possible formats and their benefits:
+Other possible formats and their benefits:
 
-    * YAML - (requires manually installing "pyyaml" Python module) slow, but key
-    files are more human-readable and editable
+* YAML - (requires manually installing "pyyaml" Python module) slow, but key
+files are more human-readable and editable
 
-    * msgpack - (requires manually installing "msgpack" Python module). Fast,
-    reliable binary serialization format. If used, keys can hold binary values as
-    well.
+* msgpack - (requires manually installing "msgpack" Python module). Fast,
+reliable binary serialization format. If used, keys can hold binary values as
+well.
 
-    * cbor - similar to msgpack (requires manually installing "cbor" Python module)
+* cbor - similar to msgpack (requires manually installing "cbor" Python module)
 
-    * pickle - native Python pickle binary data serialization format. Is slower
-    than msgpack/cbor, but keys can hold Python objects and functions as-is.
+* pickle - native Python pickle binary data serialization format. Is slower
+than msgpack/cbor, but keys can hold Python objects and functions as-is.
 
-    Databases can be easily converted between formats using "yedb" CLI tool or
-    "convert\_fmt" method, unless format-specific features are used (e.g. if keys
-            have binary data, they can't be converted to JSON properly).
+Databases can be easily converted between formats using "yedb" CLI tool or
+"convert\_fmt" method, unless format-specific features are used (e.g. if keys
+        have binary data, they can't be converted to JSON properly).
 
 ## Database format
 
-    The format is very simple:
+The format is very simple:
 
 * .yedb - meta data file (JSON-serialized)
-    * path/to/key.ext - key file
-    * path/to/key.tmp - key didn't survive the power loss, but may be restored
+* path/to/key.ext - key file
+* path/to/key.tmp - key didn't survive the power loss, but may be restored
 
-    By default, databases use checksums, so key files have the following formats.
+By default, databases use checksums, so key files have the following formats.
 
-    For binary engine formats (msgpack, cbor, pickle):
+For binary engine formats (msgpack, cbor, pickle):
 
-        * Byte 0-31 (32 bytes) - SHA256-checksum
-        * Byte 31-40 (8 bytes) - stime (key set time in nanoseconds) timestamp
-        * Byte 40-N - key value
+    * Byte 0-31 (32 bytes) - SHA256-checksum
+    * Byte 31-40 (8 bytes) - stime (key set time in nanoseconds) timestamp
+    * Byte 40-N - key value
 
-        For text engine formats (json, yaml):
+    For text engine formats (json, yaml):
 
-    * line 1 - SHA256-checksum (hex)
+* line 1 - SHA256-checksum (hex)
 * line 2 - stime (key set time in nanoseconds) timestamp (hex)
-    * line 3-N - key value, with leading LF at the end
+* line 3-N - key value, with leading LF at the end
 
-    If database checksums are not used, keys are stored in the chosen serialization
-    format as-is. This can give benefits to easily manage / repair keys manually,
-    but loses data reliability, key set time (file mtime can still be used) and
-    using built-in repair tools.
+If database checksums are not used, keys are stored in the chosen serialization
+format as-is. This can give benefits to easily manage / repair keys manually,
+but loses data reliability, key set time (file mtime can still be used) and
+using built-in repair tools.
 
 ## Schema validation
 
-    As all keys are serialized values, they can be automatically schema-validated
-    with JSON Schema (https://json-schema.org/).
+As all keys are serialized values, they can be automatically schema-validated
+with JSON Schema (https://json-schema.org/).
 
-    To create the validation schema for the chosen key, or key group, create a
-    special key ".schema/path/to", which has to contain the valid JSON Schema.
+To create the validation schema for the chosen key, or key group, create a
+special key ".schema/path/to", which has to contain the valid JSON Schema.
 
-    E.g. the schema, stored in the key ".schema/groups/group1" will be used for
-    validating all keys in "groups/group1", including the group primary key. And
-    the schema, stored in ".schema/groups/group1/key1" will be used for validating
-    "groups/group1/key1" only (if key or subgroup schema is present, the parent
-            schemas are omitted).
+E.g. the schema, stored in the key ".schema/groups/group1" will be used for
+validating all keys in "groups/group1", including the group primary key. And
+the schema, stored in ".schema/groups/group1/key1" will be used for validating
+"groups/group1/key1" only (if key or subgroup schema is present, the parent
+        schemas are omitted).
 
-    YEDB also supports a non-standard scheme:
+YEDB also supports a non-standard scheme:
 
-    ```json
+```json
 { "type" : "code.python" }
 ```
 
