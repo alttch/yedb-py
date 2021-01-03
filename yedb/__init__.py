@@ -4,9 +4,7 @@ DB_VERSION = 1
 
 DEFAULT_FMT = 'json'
 
-DEFAULT_HTTP_TIMEOUT = 5
-
-DEFAULT_SOCKET_TIMEOUT = 5
+DEFAULT_TIMEOUT = 5
 
 DEFAULT_CACHE_SIZE = 1000
 
@@ -68,7 +66,7 @@ class YEDB():
 
     def _init_socket(self):
         db_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        db_socket.settimeout(self.socket_timeout)
+        db_socket.settimeout(self.timeout)
         db_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
         db_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8192)
         return db_socket
@@ -140,7 +138,7 @@ class YEDB():
             r = post(self.db,
                      data=data,
                      headers=headers,
-                     timeout=self.http_timeout,
+                     timeout=self.timeout,
                      auth=self.http_auth)
             if not r.ok:
                 raise RuntimeError(f'http response code {r.status_code}')
@@ -209,7 +207,7 @@ class YEDB():
             dbpath: database directory
             default_fmt: default data format
             default_checksums: use SHA256 checksums by default
-            http_timeout: server timeout (for client/server mode)
+            timeout: server timeout (for client/server mode)
             http_username: http username
             http_password: http password
             http_auth: auth type (basic or digest)
@@ -219,7 +217,7 @@ class YEDB():
         self.lock = RLock()
         self.auto_repair = kwargs.get('auto_repair')
         self.cache = LRUCache(kwargs.get('cache_size', DEFAULT_CACHE_SIZE))
-        self.timeout = 5
+        self.timeout = kwargs.get('timeout', DEFAULT_TIMEOUT)
         if debug:
             logger.debug('initializing db')
             logger.debug(f'path: {path}')
@@ -230,9 +228,6 @@ class YEDB():
             self.db = path
             self.use_db_socket = Path(path).is_socket() or path.endswith(
                 '.sock') or path.endswith('.socket')
-            self.http_timeout = kwargs.get('http_timeout', DEFAULT_HTTP_TIMEOUT)
-            self.socket_timeout = kwargs.get('socket_timeout',
-                                             DEFAULT_SOCKET_TIMEOUT)
             username = kwargs.get('http_username')
             if username:
                 password = kwargs.get('http_password', '')
@@ -575,7 +570,6 @@ class YEDB():
                 os.fsync(fh.fileno())
 
     def open(self,
-             timeout=None,
              auto_create=True,
              auto_repair=False,
              _skip_lock=False,
@@ -584,7 +578,6 @@ class YEDB():
              **kwargs):
         """
         Args:
-            timeout: max open timeout
             auto_create: automatically create db
             auto_repair: automatically repair db
             auto_flush: always flush written data to disk
@@ -638,7 +631,7 @@ class YEDB():
                     logger.debug(f'locking database')
                 if self.lock_file.exists():
                     self.repair_recommended = True
-                self._lock_db(timeout=timeout)
+                self._lock_db(timeout=self.timeout)
 
             self._opened = True
             if debug:

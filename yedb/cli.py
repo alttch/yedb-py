@@ -530,6 +530,7 @@ def cli():
                         v = fmt_time(v, 'ns')
                     data.append(dict(name=k, value=v))
                 data.append(dict(name='connection', value=db.db))
+                data.append(dict(name='timeout', value=db.timeout))
                 if kwargs.get('full'):
                     if remote:
                         db._not_implemented()
