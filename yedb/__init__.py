@@ -6,11 +6,11 @@ DEFAULT_FMT = 'json'
 
 DEFAULT_HTTP_TIMEOUT = 5
 
+DEFAULT_SOCKET_TIMEOUT = 5
+
 DEFAULT_CACHE_SIZE = 1000
 
 FMTS = ['json', 'yaml', 'msgpack', 'cbor', 'pickle']
-
-FRAME_END = b'\x00\x00EOF\x00\x00'
 
 import threading
 import jsonschema
@@ -64,16 +64,32 @@ class YEDB():
     The object is thread-safe
     """
 
+    def _init_socket(self):
+        db_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        db_socket.settimeout(self.socket_timeout)
+        db_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
+        db_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8192)
+        return db_socket
+
     def _remote_call(self, method, **kwargs):
+
+        def _reopen_socket():
+            if debug:
+                logger.debug(f'(re)opening socket {self.db}')
+            db_socket = self._init_socket()
+            db_socket.connect(self.db)
+            g.db_socket = db_socket
+            return db_socket
+
         req = {'jsonrpc': '2.0', 'id': 1, 'method': method, 'params': kwargs}
         try:
             import msgpack
             use_msgpack = True
             data = msgpack.dumps(req)
-            if not self.db_socket:
+            if not self.use_db_socket:
                 headers = {'Content-Type': 'application/x-msgpack'}
         except ModuleNotFoundError:
-            if self.db_socket:
+            if self.use_db_socket:
                 raise
             try:
                 import rapidjson as json
@@ -85,23 +101,24 @@ class YEDB():
         if debug:
             logger.debug(f'JRPC ({"msgpack" if use_msgpack else "json"}) '
                          f'{self.db} method={method} auth={self.http_auth}')
-        if self.db_socket:
+        if self.use_db_socket:
+            try:
+                db_socket = g.db_socket
+            except AttributeError:
+                db_socket = _reopen_socket()
             with self.lock:
-                if self.db_socket._closed:
-                    self.db_socket = socket.socket(socket.AF_UNIX,
-                                                   socket.SOCK_STREAM)
-                    self.db_socket.connect(self.db)
-                self.db_socket.send(data + FRAME_END)
-                response = b''
-                while True:
-                    data = self.db_socket.recv(1024)
-                    if not data:
-                        break
-                    response += data
-                    if FRAME_END in response:
-                        break
-                # self.db_socket.close()
-            data = msgpack.loads(response[:-7], raw=False)
+                if db_socket._closed:
+                    db_socket = _reopen_socket()
+                try:
+                    db_socket.send(len(data).to_bytes(4, 'little') + data)
+                except BrokenPipeError:
+                    db_socket = _reopen_socket()
+                    db_socket.send(len(data).to_bytes(4, 'little') + data)
+                frame = db_socket.recv(4)
+                frame_len = int.from_bytes(frame, 'little')
+                response = db_socket.recv(frame_len)
+                db_socket.close()
+                data = msgpack.loads(response, raw=False)
         else:
             try:
                 post = g.session.post
@@ -142,22 +159,13 @@ class YEDB():
         raise RuntimeError('not implemented in remote mode')
 
     def _open_remote(self, **kwargs):
-        if self.db_socket:
-            if self.db_socket._closed:
-                self.db_socket = socket.socket(socket.AF_UNIX,
-                                               socket.SOCK_STREAM)
-            self.db_socket.connect(self.db)
         result = self._remote_call('test')
         if result.get('name') != 'yedb':
             raise RuntimeError('unsupported RPC server')
         return result
 
     def _close_remote(self):
-        if self.db_socket:
-            try:
-                self.db_socket.close()
-            except OSError:
-                pass
+        pass
 
     def __init__(
         self,
@@ -202,6 +210,7 @@ class YEDB():
         self.lock = RLock()
         self.auto_repair = kwargs.get('auto_repair')
         self.cache = LRUCache(kwargs.get('cache_size', DEFAULT_CACHE_SIZE))
+        self.timeout = 5
         if debug:
             logger.debug('initializing db')
             logger.debug(f'path: {path}')
@@ -210,13 +219,11 @@ class YEDB():
                 path).is_socket() or path.endswith('.sock') or path.endswith(
                     '.socket'):
             self.db = path
-            if Path(path).is_socket() or path.endswith(
-                    '.sock') or path.endswith('.socket'):
-                self.db_socket = socket.socket(socket.AF_UNIX,
-                                               socket.SOCK_STREAM)
-            else:
-                self.db_socket = None
+            self.use_db_socket = Path(path).is_socket() or path.endswith(
+                '.sock') or path.endswith('.socket')
             self.http_timeout = kwargs.get('http_timeout', DEFAULT_HTTP_TIMEOUT)
+            self.socket_timeout = kwargs.get('socket_timeout',
+                                             DEFAULT_SOCKET_TIMEOUT)
             username = kwargs.get('http_username')
             if username:
                 password = kwargs.get('http_password', '')

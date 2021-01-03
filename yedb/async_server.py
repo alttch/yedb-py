@@ -202,21 +202,15 @@ async def handle_web(request):
 
 async def handle_unix(reader, writer):
     import msgpack
-    raw = b''
     try:
-        while True:
-            try:
-                data = await reader.read(1024)
-            except asyncio.TimeoutError:
-                logger.error('Socket timeout error')
-                writer.close()
-                return
-            if not data:
-                break
-            raw += data
-            if yedb.FRAME_END in raw:
-                break
-        payload = msgpack.loads(raw[:-7], raw=False)
+        try:
+            frame = await reader.read(4)
+            frame_len = int.from_bytes(frame, 'little')
+            data = await reader.read(frame_len)
+        except asyncio.TimeoutError:
+            logger.error('Socket timeout error')
+            writer.close()
+        payload = msgpack.loads(data, raw=False)
         try:
             result = await handle_jrpc(payload, 'localhost')
         except Exception as e:
@@ -224,11 +218,12 @@ async def handle_unix(reader, writer):
             log_traceback()
             return
         if result:
-            writer.write(msgpack.dumps(result) + yedb.FRAME_END)
+            data = msgpack.dumps(result)
+            writer.write(len(data).to_bytes(4, 'little') + data)
+            await writer.drain()
     except Exception as e:
         logger.error(e)
         log_traceback()
-        writer.close()
 
 
 def start(bind='127.0.0.1',
