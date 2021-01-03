@@ -16,7 +16,7 @@ import logging
 
 logger = logging.getLogger('yedb')
 
-if os.getenv('DEBUG'):
+if os.getenv('DEBUG') == '1':
     import logging
     logging.basicConfig(level=logging.DEBUG)
     yedb.debug = True

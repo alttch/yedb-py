@@ -2,10 +2,13 @@ __version__ = '0.0.36'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
+DEFAULT_PORT = 8870
+
 import yedb
 import platform
 import os
 import time
+import platform
 from types import GeneratorType
 from pathlib import Path
 from aiohttp import web
@@ -28,7 +31,7 @@ class DummyLock:
 
 yedb.RLock = DummyLock
 
-if os.getenv('DEBUG'):
+if os.getenv('DEBUG') == '1':
     import logging
     logging.basicConfig(level=logging.DEBUG)
     yedb.debug = True
@@ -80,7 +83,13 @@ class MethodNotFound(Exception):
     pass
 
 
-async def handle(request):
+def log_traceback():
+    if yedb.debug:
+        import traceback
+        logger.debug(traceback.format_exc())
+
+
+async def handle_jrpc(payload, remote_name):
 
     def format_error(code, msg):
         if msg.startswith("'") and msg.endswith("'"):
@@ -100,23 +109,12 @@ async def handle(request):
         else:
             return str(data)
 
-    ct = request.content_type
-    if ct == 'application/msgpack' or ct == 'application/x-msgpack':
-        req = REQ_MSGPACK
-    else:
-        req = REQ_JSON
-    raw = await request.read()
-    if req == REQ_MSGPACK:
-        import msgpack
-        payload = msgpack.loads(raw, raw=False)
-    elif req == REQ_JSON:
-        payload = json.loads(raw)
     result = []
     for pp in payload if isinstance(payload, list) else [payload]:
         if not isinstance(pp, dict) or not pp:
-            raise web.HTTPBadRequest(reason='Invalid payload')
+            raise RuntimeError('Invalid payload')
         elif pp.get('jsonrpc') != '2.0':
-            raise web.HTTPBadRequest(reason='Unsupported JSON RPC protocol')
+            raise RuntimeError('Unsupported JSON RPC protocol')
         req_id = pp.get('id')
         method = pp.get('method')
         p = pp.get('params')
@@ -128,7 +126,7 @@ async def handle(request):
             elif not isinstance(p, dict):
                 raise InvalidRequest
             pl = {k: v for k, v in p.items() if k != 'value'}
-            logger.debug(f'API request {request.remote} {method} {pl}')
+            logger.debug(f'API request {remote_name} {method} {pl}')
             if method not in METHODS:
                 raise MethodNotFound
             elif method == 'test':
@@ -144,7 +142,7 @@ async def handle(request):
                 res['size'] = i.st_size
                 res['sha256'] = res['sha256'].hex()
             elif method == 'info':
-                res['host'] = f'{request.host}'
+                res['host'] = platform.node()
             if res is None and method != 'get':
                 res = True
             else:
@@ -164,15 +162,34 @@ async def handle(request):
             r = format_error(-32003, str(e))
         except Exception as e:
             r = format_error(-32000, str(e))
-            if yedb.debug:
-                import traceback
-                logger.debug(traceback.format_exc())
+            log_traceback()
         if req_id is not None:
             r['id'] = req_id
             if isinstance(payload, list):
                 result.append(r)
             else:
                 result = r
+        return result
+
+
+async def handle_web(request):
+
+    ct = request.content_type
+    if ct == 'application/msgpack' or ct == 'application/x-msgpack':
+        req = REQ_MSGPACK
+    else:
+        req = REQ_JSON
+    raw = await request.read()
+    if req == REQ_MSGPACK:
+        import msgpack
+        payload = msgpack.loads(raw, raw=False)
+    elif req == REQ_JSON:
+        payload = json.loads(raw)
+    try:
+        result = await handle_jrpc(payload, request.remote)
+    except Exception as e:
+        log_traceback()
+        raise web.HTTPBadRequest(reason=str(e))
     if result:
         if req == REQ_MSGPACK:
             data = msgpack.dumps(result)
@@ -183,29 +200,87 @@ async def handle(request):
         return web.Response(status=204)
 
 
-def start(host='127.0.0.1',
-          port=8870,
+async def handle_unix(reader, writer):
+    import msgpack
+    raw = b''
+    try:
+        while True:
+            try:
+                data = await reader.read(1024)
+            except asyncio.TimeoutError:
+                logger.error('Socket timeout error')
+                writer.close()
+                return
+            if not data:
+                break
+            raw += data
+            if yedb.FRAME_END in raw:
+                break
+        payload = msgpack.loads(raw[:-7], raw=False)
+        try:
+            result = await handle_jrpc(payload, 'localhost')
+        except Exception as e:
+            logger.error(e)
+            log_traceback()
+            return
+        if result:
+            writer.write(msgpack.dumps(result) + yedb.FRAME_END)
+    except Exception as e:
+        logger.error(e)
+        log_traceback()
+        writer.close()
+
+
+def start(bind='127.0.0.1',
           pid_file=PID_FILE,
           disable_auto_repair=False,
           dboptions=None):
 
+    if bind.startswith('/'):
+        import asyncio
+        socket = Path(bind)
+        try:
+            socket.unlink()
+        except FileNotFoundError:
+            pass
+        app = None
+    else:
+        try:
+            host, port = bind.rsplit(':', 1)
+        except ValueError:
+            host = bind
+            port = DEFAULT_PORT
+        app = web.Application()
+        app.add_routes([web.post('/', handle_web)])
+        socket = None
+
     p = Path(pid_file)
     p.write_text(str(os.getpid()))
-
-    app = web.Application()
-    app.add_routes([web.post('/', handle)])
 
     with yedb.YEDB(auto_repair=not disable_auto_repair, **dboptions) as db:
         yedb.db = db
 
-        logger.info(f'YEDB server started at {host}:{port}, '
+        logger.info(f'YEDB server started at {bind}, '
                     f'DB: {dboptions["dbpath"]}')
         try:
-            web.run_app(app, host=host, port=port, access_log=None)
+            if app:
+                web.run_app(app, host=host, port=port, access_log=None)
+            else:
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(
+                    asyncio.start_unix_server(handle_unix,
+                                              path=socket.as_posix()))
+                socket.chmod(0o660)
+                loop.run_forever()
             logger.info(f'YEDB server stopped, DB: {dboptions["dbpath"]}')
         finally:
             try:
                 p.unlink()
+            except FileNotFoundError:
+                pass
+            try:
+                if socket:
+                    socket.unlink()
             except FileNotFoundError:
                 pass
 
@@ -214,15 +289,10 @@ if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument('DBPATH')
-    ap.add_argument('-H',
-                    '--host',
-                    help='Host/IP to bind to',
-                    default='127.0.0.1')
-    ap.add_argument('-P',
-                    '--port',
-                    help='Port to bind to',
-                    default=8870,
-                    type=int)
+    ap.add_argument('-B',
+                    '--bind',
+                    help='Host/IP:port or socket path to bind to',
+                    default='127.0.0.1:8870')
     ap.add_argument('--pid-file', default=PID_FILE)
     ap.add_argument('--default-fmt',
                     help='Default database format',
@@ -234,8 +304,7 @@ if __name__ == '__main__':
                     help='Disable auto repair',
                     action='store_true')
     a = ap.parse_args()
-    start(host=a.host,
-          port=a.port,
+    start(bind=a.bind,
           pid_file=a.pid_file,
           disable_auto_repair=a.disable_auto_repair,
           dboptions=dict(default_fmt=a.default_fmt,

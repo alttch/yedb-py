@@ -529,6 +529,7 @@ def cli():
                     if k == 'created':
                         v = fmt_time(v, 'ns')
                     data.append(dict(name=k, value=v))
+                data.append(dict(name='connection', value=db.db))
                 if kwargs.get('full'):
                     if remote:
                         db._not_implemented()
@@ -693,12 +694,13 @@ def cli():
     if db:
         db.open()
     try:
-        if db and db.info()['repair_recommended']:
-            print_warn(
-                'database has not been closed correctly, repair is recommended')
         if need_launch:
             ap.launch()
         else:
+            if db and db.info()['repair_recommended']:
+                print_warn(
+                    'database has not been closed correctly, repair is recommended'
+                )
             import readline
             history_file = os.path.expanduser('~') + '/.yedb_history'
             try:

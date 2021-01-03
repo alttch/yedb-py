@@ -10,6 +10,8 @@ DEFAULT_CACHE_SIZE = 1000
 
 FMTS = ['json', 'yaml', 'msgpack', 'cbor', 'pickle']
 
+FRAME_END = b'\x00\x00EOF\x00\x00'
+
 import threading
 import jsonschema
 
@@ -22,6 +24,7 @@ from functools import partial
 from cachetools import LRUCache
 
 import os
+import socket
 
 import logging
 
@@ -62,19 +65,16 @@ class YEDB():
     """
 
     def _remote_call(self, method, **kwargs):
-        import uuid
-        req = {
-            'jsonrpc': '2.0',
-            'id': str(uuid.uuid4()),
-            'method': method,
-            'params': kwargs
-        }
+        req = {'jsonrpc': '2.0', 'id': 1, 'method': method, 'params': kwargs}
         try:
             import msgpack
             use_msgpack = True
             data = msgpack.dumps(req)
-            headers = {'Content-Type': 'application/x-msgpack'}
+            if not self.db_socket:
+                headers = {'Content-Type': 'application/x-msgpack'}
         except ModuleNotFoundError:
+            if self.db_socket:
+                raise
             try:
                 import rapidjson as json
             except:
@@ -85,25 +85,43 @@ class YEDB():
         if debug:
             logger.debug(f'JRPC ({"msgpack" if use_msgpack else "json"}) '
                          f'{self.db} method={method} auth={self.http_auth}')
-        try:
-            post = g.session.post
-        except AttributeError:
-            import requests
-            session = requests.Session()
-            g.session = session
-            post = session.post
-        # from requests import post
-        r = post(self.db,
-                 data=data,
-                 headers=headers,
-                 timeout=self.http_timeout,
-                 auth=self.http_auth)
-        if not r.ok:
-            raise RuntimeError(f'http response code {r.status_code}')
-        if use_msgpack:
-            data = msgpack.loads(r.content, raw=False)
+        if self.db_socket:
+            with self.lock:
+                if self.db_socket._closed:
+                    self.db_socket = socket.socket(socket.AF_UNIX,
+                                                   socket.SOCK_STREAM)
+                    self.db_socket.connect(self.db)
+                self.db_socket.send(data + FRAME_END)
+                response = b''
+                while True:
+                    data = self.db_socket.recv(1024)
+                    if not data:
+                        break
+                    response += data
+                    if FRAME_END in response:
+                        break
+                # self.db_socket.close()
+            data = msgpack.loads(response[:-7], raw=False)
         else:
-            data = json.loads(r.text)
+            try:
+                post = g.session.post
+            except AttributeError:
+                import requests
+                session = requests.Session()
+                g.session = session
+                post = session.post
+            # from requests import post
+            r = post(self.db,
+                     data=data,
+                     headers=headers,
+                     timeout=self.http_timeout,
+                     auth=self.http_auth)
+            if not r.ok:
+                raise RuntimeError(f'http response code {r.status_code}')
+            if use_msgpack:
+                data = msgpack.loads(r.content, raw=False)
+            else:
+                data = json.loads(r.text)
         try:
             error_code = data['error']['code']
             if error_code == -32001:
@@ -123,11 +141,23 @@ class YEDB():
     def _not_implemented(self, *args, **kwargs):
         raise RuntimeError('not implemented in remote mode')
 
-    def _test_remote(self):
+    def _open_remote(self, **kwargs):
+        if self.db_socket:
+            if self.db_socket._closed:
+                self.db_socket = socket.socket(socket.AF_UNIX,
+                                               socket.SOCK_STREAM)
+            self.db_socket.connect(self.db)
         result = self._remote_call('test')
         if result.get('name') != 'yedb':
             raise RuntimeError('unsupported RPC server')
         return result
+
+    def _close_remote(self):
+        if self.db_socket:
+            try:
+                self.db_socket.close()
+            except OSError:
+                pass
 
     def __init__(
         self,
@@ -169,14 +199,23 @@ class YEDB():
             cache_size: item cache size
         """
         path = str(dbpath)
+        self.lock = RLock()
         self.auto_repair = kwargs.get('auto_repair')
         self.cache = LRUCache(kwargs.get('cache_size', DEFAULT_CACHE_SIZE))
         if debug:
             logger.debug('initializing db')
             logger.debug(f'path: {path}')
             logger.debug(f'options: {kwargs}')
-        if path.startswith('http://') or path.startswith('https://'):
+        if path.startswith('http://') or path.startswith('https://') or Path(
+                path).is_socket() or path.endswith('.sock') or path.endswith(
+                    '.socket'):
             self.db = path
+            if Path(path).is_socket() or path.endswith(
+                    '.sock') or path.endswith('.socket'):
+                self.db_socket = socket.socket(socket.AF_UNIX,
+                                               socket.SOCK_STREAM)
+            else:
+                self.db_socket = None
             self.http_timeout = kwargs.get('http_timeout', DEFAULT_HTTP_TIMEOUT)
             username = kwargs.get('http_username')
             if username:
@@ -196,9 +235,9 @@ class YEDB():
                 fn = getattr(self, f)
                 if fn.__class__.__name__ == 'method':
                     if f == 'open':
-                        setattr(self, f, self._test_remote)
+                        setattr(self, f, self._open_remote)
                     elif f == 'close':
-                        setattr(self, f, self._empty)
+                        setattr(self, f, self._close_remote)
                     elif not f.startswith('_'):
                         if f in METHODS:
                             setattr(self, f, partial(self._remote_call, f))
@@ -209,7 +248,6 @@ class YEDB():
             self.default_fmt = default_fmt if default_fmt else DEFAULT_FMT
             self.default_checksums = default_checksums
             self._dbpath_len = len(self.db.absolute().as_posix()) + 1
-            self.lock = RLock()
             self._key_locks = {}
             self._opened = False
             self._flock = None
