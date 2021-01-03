@@ -58,7 +58,7 @@ class Server:
 def manage():
     _d.p = subprocess.Popen(
         f'python3 -m yedb.async_server {SERVER_DB_PATH} '
-        '-P 8879 --default-fmt msgpack',
+        '-B 127.0.0.1:8879 --default-fmt msgpack',
         shell=True)
     time.sleep(0.5)
     yield
