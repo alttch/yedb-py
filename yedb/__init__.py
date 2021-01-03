@@ -106,26 +106,25 @@ class YEDB():
                 db_socket = g.db_socket
             except AttributeError:
                 db_socket = _reopen_socket()
-            with self.lock:
-                if db_socket._closed:
-                    db_socket = _reopen_socket()
+            if db_socket._closed:
+                db_socket = _reopen_socket()
+            try:
                 try:
-                    try:
-                        db_socket.sendall(
-                            len(data).to_bytes(4, 'little') + data)
-                    except BrokenPipeError:
-                        db_socket = _reopen_socket()
-                        db_socket.sendall(
-                            len(data).to_bytes(4, 'little') + data)
-                    frame = db_socket.recv(4)
-                    frame_len = int.from_bytes(frame, 'little')
-                    response = b''
-                    while len(response) < frame_len:
-                        response += db_socket.recv(SOCKET_BUF)
-                    data = msgpack.loads(response, raw=False)
-                except:
-                    db_socket.close()
-                    raise
+                    db_socket.sendall(
+                        len(data).to_bytes(4, 'little') + data)
+                except BrokenPipeError:
+                    db_socket = _reopen_socket()
+                    db_socket.sendall(
+                        len(data).to_bytes(4, 'little') + data)
+                frame = db_socket.recv(4)
+                frame_len = int.from_bytes(frame, 'little')
+                response = b''
+                while len(response) < frame_len:
+                    response += db_socket.recv(SOCKET_BUF)
+                data = msgpack.loads(response, raw=False)
+            except:
+                db_socket.close()
+                raise
         else:
             try:
                 post = g.session.post
@@ -214,7 +213,6 @@ class YEDB():
             cache_size: item cache size
         """
         path = str(dbpath)
-        self.lock = RLock()
         self.auto_repair = kwargs.get('auto_repair')
         self.cache = LRUCache(kwargs.get('cache_size', DEFAULT_CACHE_SIZE))
         self.timeout = kwargs.get('timeout', DEFAULT_TIMEOUT)
@@ -255,6 +253,7 @@ class YEDB():
                         else:
                             setattr(self, f, self._not_implemented)
         else:
+            self.lock = RLock()
             self.db = Path(dbpath).absolute()
             self.default_fmt = default_fmt if default_fmt else DEFAULT_FMT
             self.default_checksums = default_checksums

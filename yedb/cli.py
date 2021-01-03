@@ -1,3 +1,13 @@
+def _bm_set_key(db, n, x, iters, threads, v):
+    for z in range(x * int(iters / threads), (x + 1) * int(iters / threads)):
+        db.set(key=f'.benchmark/{n}/key{z}', value=v)
+
+
+def _bm_get_key(db, n, x, iters, threads):
+    for z in range(x * int(iters / threads), (x + 1) * int(iters / threads)):
+        db.get(key=f'.benchmark/{n}/key{z}')
+
+
 def cli():
 
     import yedb
@@ -146,7 +156,9 @@ def cli():
         ]:
             sys.argv[1] = '-h'
             raise ValueError
-        if db_dir.startswith('http://') or db_dir.startswith('https://'):
+        if db_dir.startswith('http://') or db_dir.startswith(
+                'https://') or Path(db_dir).is_socket() or db_dir.endswith(
+                    '.sock') or db_dir.endswith('.socket'):
             options['timeout'] = 60
             remote = True
             db_path = db_dir
@@ -596,15 +608,28 @@ def cli():
                                  sum(f.stat().st_size for f in db_files))))
                 pretty_print_table(sorted(data, key=lambda k: k['name']))
             elif cmd == 'benchmark':
+
                 db.delete(key='.benchmark', recursive=True)
                 iters = 1000
+                threads = kwargs.get('threads', 4)
+                print(f'Benchmarking. Threads: {threads}')
+                print()
+                from concurrent.futures import ThreadPoolExecutor
+                p = ThreadPoolExecutor(max_workers=threads)
+                tasks = []
                 test_arr = [777.777] * 100
                 test_dict = {f'v{n}': n * 777.777 for n in range(100)}
                 for n, v in [('numeric', 777.777), ('string', 'x' * 1000),
                              ('array', test_arr), ('dict', test_dict)]:
                     start = time.perf_counter()
-                    for z in range(iters):
-                        db.set(key=f'.benchmark/{n}/key{z}', value=v)
+
+                    for i in range(threads):
+                        tasks.append(
+                            p.submit(_bm_set_key, db, n, i, iters, threads, v))
+
+                    for t in tasks:
+                        t.result()
+                    tasks.clear()
                     print(
                         colored(
                             f'set/{n}'.ljust(12), color='blue', attrs='bold') +
@@ -618,8 +643,13 @@ def cli():
                     for n, v in [('numeric', 777.777), ('string', 'x' * 1000),
                                  ('array', test_arr), ('dict', test_dict)]:
                         start = time.perf_counter()
-                        for z in range(iters):
-                            db.get(key=f'.benchmark/{n}/key{z}')
+                        for z in range(threads):
+                            tasks.append(
+                                p.submit(_bm_get_key, db, n, i, iters, threads))
+
+                        for t in tasks:
+                            t.result()
+                        tasks.clear()
                         print(
                             colored(f'get{"(cached)" if c else ""}/{n}'.ljust(
                                 12),
@@ -723,7 +753,11 @@ def cli():
     ap_info = sp.add_parser('info', help='Database info')
     ap_info.add_argument('-y', '--full', action='store_true')
 
-    ap_purge = sp.add_parser('benchmark', help='Benchmark database')
+    ap_benchmark = sp.add_parser('benchmark', help='Benchmark database')
+    ap_benchmark.add_argument('--threads',
+                              metavar='NUMBER',
+                              type=int,
+                              default=4)
 
     ap_check = sp.add_parser('check', help='Check database')
 
