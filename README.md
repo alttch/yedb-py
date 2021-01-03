@@ -74,8 +74,7 @@ cd /opt/yedbd && curl https://raw.githubusercontent.com/alttch/yedb/main/setup-s
 
 Use env to specify extra options:
 
-* YEDBD\_HOST - override bind host
-* YEDBD\_PORT - override bind port
+* YEDBD\_BIND - override bind to (http://host:port or path to UNIX socket)
 * PIP\_EXTRA\_OPTIONS - specify pip extra options
 * PYTHON - override Python path
 * PIP - override pip path
