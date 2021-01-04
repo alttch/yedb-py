@@ -303,5 +303,6 @@ https://yedb.readthedocs.io/
 ## TODO
 
 * Fancy connection errors
+* Custom db lock location
 * Softer locking & async read/writes
 * Rust library
