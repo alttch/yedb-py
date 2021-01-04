@@ -85,6 +85,24 @@
    :module: yedb
 
 
+.. py:class:: Session(db)
+   :module: yedb
+
+   Session object, all methods except open/close are proxied to db
+   
+   
+   .. py:method:: Session.close()
+      :module: yedb
+   
+      Close session
+      
+   
+   .. py:method:: Session.open()
+      :module: yedb
+   
+      Open session
+      
+
 .. py:class:: YEDB(dbpath, default_fmt='json', default_checksums=True, **kwargs)
    :module: yedb
 
@@ -323,6 +341,12 @@
       
       :returns: Generator object with tuples (key, True|False) where True means a
                 key is repaired and False means a key is purged.
+      
+   
+   .. py:method:: YEDB.session()
+      :module: yedb
+   
+      Get session object
       
    
    .. py:method:: YEDB.set(key, value, flush=False, stime=None, _ignore_schema=False)
