@@ -629,7 +629,7 @@ class YEDB():
                 raise RuntimeError('database is not opened')
             d = self.dbinfo.copy()
             d['repair_recommended'] = self.repair_recommended
-            d['cached'] = len(self.cache)
+            d['cached_keys'] = len(self.cache)
             try:
                 d.update(self.meta_info.copy())
             except:
