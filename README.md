@@ -301,5 +301,4 @@ https://yedb.readthedocs.io/
 ## TODO
 
 * Softer locking & async read/writes
-* Client/server complicated data structures
 * Rust library

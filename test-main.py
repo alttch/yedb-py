@@ -186,34 +186,38 @@ def test_list_get_subkeys(server):
                           ]) == [['d/k1', '1'], ['d/k2', '2'], ['d/k3', '3']]
 
 
-def test_key_dict():
+@pytest.mark.parametrize('server', [False, True])
+def test_key_dict(server):
     clear()
-    with YEDB(DB_PATH) as db:
-        with db.key_dict('keys/d1') as key:
-            key.set('data', 123)
-            key.set('data2', 'test')
-        with db.key_dict('keys/d1') as key:
-            assert key.get('data') == 123
-            assert key.get('data2') == 'test'
-            key.delete('data')
-        with db.key_dict('keys/d1') as key:
-            with pytest.raises(KeyError):
-                key.get('data')
-            assert key.get('data2') == 'test'
+    with Server(server) as dbpath:
+        with YEDB(dbpath) as db:
+            with db.key_dict('keys/d1') as key:
+                key.set('data', 123)
+                key.set('data2', 'test')
+            with db.key_dict('keys/d1') as key:
+                assert key.get('data') == 123
+                assert key.get('data2') == 'test'
+                key.delete('data')
+            with db.key_dict('keys/d1') as key:
+                with pytest.raises(KeyError):
+                    key.get('data')
+                assert key.get('data2') == 'test'
 
 
-def test_key_list():
+@pytest.mark.parametrize('server', [False, True])
+def test_key_list(server):
     clear()
-    with YEDB(DB_PATH) as db:
-        with db.key_list('keys/l1') as key:
-            key.append(123)
-            key.append('test')
-        with db.key_list('keys/l1') as key:
-            assert key.data == [123, 'test']
-            key.remove(123)
-        with db.key_list('keys/l1') as key:
-            assert key.data == ['test']
-            key.data.clear()
-            key.set_modified()
-        with db.key_list('keys/l1') as key:
-            assert key.data == []
+    with Server(server) as dbpath:
+        with YEDB(dbpath) as db:
+            with db.key_list('keys/l1') as key:
+                key.append(123)
+                key.append('test')
+            with db.key_list('keys/l1') as key:
+                assert key.data == [123, 'test']
+                key.remove(123)
+            with db.key_list('keys/l1') as key:
+                assert key.data == ['test']
+                key.data.clear()
+                key.set_modified()
+            with db.key_list('keys/l1') as key:
+                assert key.data == []

@@ -383,6 +383,10 @@ class YEDB():
                         setattr(self, f, self._open_remote)
                     elif f == 'close':
                         setattr(self, f, self._close_remote)
+                    elif f == 'key_dict':
+                        setattr(self, f, self._key_dict_remote)
+                    elif f == 'key_list':
+                        setattr(self, f, self._key_list_remote)
                     elif not f.startswith('_') and f not in ['session']:
                         if f in METHODS:
                             setattr(self, f, partial(self._remote_call, f))
@@ -1081,6 +1085,9 @@ class YEDB():
         """
         Returns KeyDict object
 
+
+        Note: doesn't lock the key on client/server
+
         Args:
             key: key name
         """
@@ -1099,12 +1106,17 @@ class YEDB():
             keydir = self.path / keypath
             keydir.mkdir(exist_ok=True, parents=True)
             key_file = keydir / (keyn + self.suffix)
-            return KeyDict(name, key_file, l, self)
+            return KeyDict(self, name, key_file, l)
+
+    def _key_dict_remote(self, key):
+        return KeyDictRemote(self, key)
 
     def key_list(self, key):
         """
         Returns KeyList object
 
+        Note: doesn't lock the key on client/server
+
         Args:
             key: key name
         """
@@ -1123,7 +1135,10 @@ class YEDB():
             keydir = self.path / keypath
             keydir.mkdir(exist_ok=True, parents=True)
             key_file = keydir / (keyn + self.suffix)
-            return KeyList(name, key_file, l, self)
+            return KeyList(self, name, key_file, l)
+
+    def _key_list_remote(self, key):
+        return KeyListRemote(self, key)
 
     def delete(self,
                key,
@@ -1490,7 +1505,7 @@ class KeyDict:
     closed)
     """
 
-    def __init__(self, key_name, key_file, lock, db):
+    def __init__(self, db, key_name, key_file=None, lock=None):
         self._lock = lock
         self.key_name = key_name
         self.key_file = key_file
@@ -1584,6 +1599,19 @@ class KeyDict:
         self.close(_write=exc_type is None)
 
 
+class KeyDictRemote(KeyDict):
+
+    def open(self):
+        try:
+            self.data = self.db.get(key=self.key_name)
+        except KeyError:
+            self.data = {}
+
+    def close(self, _write=True):
+        if _write and self._changed:
+            self.db.set(key=self.key_name, value=self.data)
+
+
 class KeyList:
     """
     List key object
@@ -1601,7 +1629,7 @@ class KeyList:
     closed)
     """
 
-    def __init__(self, key_name, key_file, lock, db):
+    def __init__(self, db, key_name, key_file=None, lock=None):
         self._lock = lock
         self.key_name = key_name
         self.key_file = key_file
@@ -1663,3 +1691,16 @@ class KeyList:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close(_write=exc_type is None)
+
+
+class KeyListRemote(KeyList):
+
+    def open(self):
+        try:
+            self.data = self.db.get(key=self.key_name)
+        except KeyError:
+            self.data = []
+
+    def close(self, _write=True):
+        if _write and self._changed:
+            self.db.set(key=self.key_name, value=self.data)
