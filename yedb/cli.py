@@ -358,8 +358,8 @@ def cli():
                             l = fd.read(4)
                             if not l:
                                 break
-                            data = msgpack.loads(fd.read(int.from_bytes(
-                                l, 'little')),
+                            data = msgpack.loads(fd.read(
+                                int.from_bytes(l, 'little')),
                                                  raw=False)
                             buf.append(data)
                             c += 1
@@ -388,8 +388,8 @@ def cli():
                             l = fd.read(4)
                             if not l:
                                 break
-                            data = msgpack.loads(fd.read(int.from_bytes(
-                                l, 'little')),
+                            data = msgpack.loads(fd.read(
+                                int.from_bytes(l, 'little')),
                                                  raw=False)
                             if full:
                                 print(json.dumps(data))
@@ -815,7 +815,9 @@ def cli():
         'NEW_FORMAT', choices=['json', 'cbor', 'msgpack', 'yaml', 'pickle'])
     ap_convert.add_argument('--disable-checksums', action='store_true')
 
-    ap.ps = '{}> '.format(colored(os.getenv('YEDB_PS', db_ps), color='yellow'))
+    ps = os.getenv('YEDB_PS', db_ps)
+
+    ap.ps = '{}> '.format(colored(ps if ps else db_ps, color='yellow'))
 
     ap.run = dispatcher
 

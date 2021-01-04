@@ -1,6 +1,6 @@
 #!/bin/sh
 
-YEDB_VERSION=0.0.42
+YEDB_VERSION=0.0.43
 
 REQUIRED="realpath python3 curl"
 MODS="yedb==${YEDB_VERSION} msgpack==1.0.2 aiohttp==3.7.3"
@@ -73,7 +73,7 @@ chmod +x "$DIR_ME/yedb-server" || exit 6
 cat > "$DIR_ME/yedb" << EOF
 #!/bin/sh
 
-"$DIR_ME/venv/bin/yedb" "$YEDBD_BIND" "\$@"
+YEDB_PS="$YEDB_PS" "$DIR_ME/venv/bin/yedb" "$YEDBD_BIND" "\$@"
 EOF
 )|| exit 6
 
