@@ -14,10 +14,13 @@ FMTS = ['json', 'yaml', 'msgpack', 'cbor', 'pickle']
 
 SERVER_ID = 'yedb-altt-py'
 
+JSON_HEADERS = {'Content-Type': 'application/json'}
+MSGPACK_HEADERS = {'Content-Type': 'application/x-msgpack'}
+
 DB_MODE_LOCAL = 0
 DB_MODE_UNIX_SOCKET = 1
-DB_MODE_HTTP = 2
-DB_MODE_HTTPS = 3
+DB_MODE_TCP = 2
+DB_MODE_HTTP = 3
 
 import threading
 import jsonschema
@@ -169,7 +172,9 @@ class YEDB():
     """
 
     def _init_socket(self):
-        db_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        db_socket = socket.socket(
+            socket.AF_UNIX if self.mode == DB_MODE_UNIX_SOCKET else
+            socket.AF_INET, socket.SOCK_STREAM)
         db_socket.settimeout(self.timeout)
         db_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
         db_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8192)
@@ -187,7 +192,8 @@ class YEDB():
             if debug:
                 logger.debug(f'(re)opening socket {self.path}')
             db_socket = self._init_socket()
-            db_socket.connect(self.path)
+            db_socket.connect(self.path if self.mode ==
+                              DB_MODE_UNIX_SOCKET else self._tcp_path)
             g.db_socket = db_socket
             return db_socket
 
@@ -196,10 +202,8 @@ class YEDB():
             import msgpack
             use_msgpack = True
             data = msgpack.dumps(req)
-            if self.mode in (DB_MODE_HTTP, DB_MODE_HTTPS):
-                headers = {'Content-Type': 'application/x-msgpack'}
         except ModuleNotFoundError:
-            if self.mode == DB_MODE_UNIX_SOCKET:
+            if self.mode != DB_MODE_HTTP:
                 raise
             try:
                 import rapidjson as json
@@ -207,11 +211,10 @@ class YEDB():
                 import json
             use_msgpack = False
             data = json.dumps(req)
-            headers = {'Content-Type': 'application/json'}
         if debug:
             logger.debug(f'JRPC ({"msgpack" if use_msgpack else "json"}) '
                          f'{self.path} method={method} auth={self.http_auth}')
-        if self.mode == DB_MODE_UNIX_SOCKET:
+        if self.mode != DB_MODE_HTTP:
             try:
                 db_socket = g.db_socket
             except AttributeError:
@@ -246,7 +249,7 @@ class YEDB():
             # from requests import post
             r = post(self.path,
                      data=data,
-                     headers=headers,
+                     headers=MSGPACK_HEADERS if use_msgpack else JSON_HEADERS,
                      timeout=self.timeout,
                      auth=self.http_auth)
             if not r.ok:
@@ -330,17 +333,25 @@ class YEDB():
             logger.debug('initializing db')
             logger.debug(f'path: {path}')
             logger.debug(f'options: {kwargs}')
-        if path.startswith('http://') or path.startswith('https://') or Path(
-                path).is_socket() or path.endswith('.sock') or path.endswith(
-                    '.socket'):
+        if path.startswith('http://') or path.startswith(
+                'https://') or path.startswith('tcp://') or Path(
+                    path).is_socket() or path.endswith(
+                        '.sock') or path.endswith('.socket'):
             self.path = path
             if Path(path).is_socket() or path.endswith(
                     '.sock') or path.endswith('.socket'):
                 self.mode = DB_MODE_UNIX_SOCKET
-            elif path.startswith('https://'):
-                self.mode = DB_MODE_HTTPS
-            else:
+            elif path.startswith('https://') or path.startswith('http://'):
                 self.mode = DB_MODE_HTTP
+            else:
+                self.mode = DB_MODE_TCP
+                uri = path[6:].split('/', 1)[0]
+                if ':' in uri:
+                    host, port = uri.rsplit(':', 1)
+                    self._tcp_path = (host, int(port))
+                else:
+                    from yedb.server import DEFAULT_PORT
+                    self._tcp_path = (uri, DEFAULT_PORT)
             username = kwargs.get('http_username')
             if username:
                 password = kwargs.get('http_password', '')

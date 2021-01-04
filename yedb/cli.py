@@ -162,8 +162,9 @@ def cli():
             sys.argv[1] = '-h'
             raise ValueError
         if db_dir.startswith('http://') or db_dir.startswith(
-                'https://') or Path(db_dir).is_socket() or db_dir.endswith(
-                    '.sock') or db_dir.endswith('.socket'):
+                'https://') or db_dir.startswith('tcp://') or Path(
+                    db_dir).is_socket() or db_dir.endswith(
+                        '.sock') or db_dir.endswith('.socket'):
             options['timeout'] = 60
             remote = True
             db_path = db_dir

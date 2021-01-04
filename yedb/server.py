@@ -208,7 +208,7 @@ async def handle_web(request):
         return web.Response(status=204)
 
 
-async def handle_unix(reader, writer):
+async def handle_socket(reader, writer):
     import msgpack
     try:
         while True:
@@ -236,7 +236,7 @@ async def handle_unix(reader, writer):
         writer.close()
 
 
-def start(bind='127.0.0.1',
+def start(bind='tcp://127.0.0.1',
           pid_file=PID_FILE,
           disable_auto_repair=False,
           dboptions=None):
@@ -244,23 +244,37 @@ def start(bind='127.0.0.1',
     if bind.startswith('/'):
         import asyncio
         socket = Path(bind)
+        socket_unix = True
         try:
             socket.unlink()
         except FileNotFoundError:
             pass
         app = None
-    else:
-        if bind.startswith('http://') or bind.startswith('https://'):
-            bind = bind[bind.find('//') + 2:]
+    elif bind.startswith('tcp://'):
+        import asyncio
+        _bind = bind[bind.find('//') + 2:]
         try:
-            host, port = bind.rsplit(':', 1)
+            host, port = _bind.rsplit(':', 1)
         except ValueError:
-            host = bind
+            host = _bind
+            port = DEFAULT_PORT
+        port = int(port)
+        socket = (host, port)
+        socket_unix = False
+        app = None
+    elif bind.startswith('http://') or bind.startswith('https://'):
+        _bind = bind[bind.find('//') + 2:]
+        try:
+            host, port = _bind.rsplit(':', 1)
+        except ValueError:
+            host = _bind
             port = DEFAULT_PORT
         from aiohttp import web
         app = web.Application()
         app.add_routes([web.post('/', handle_web)])
         socket = None
+    else:
+        raise ValueError('Invalid bind format')
 
     p = Path(pid_file)
     p.write_text(str(os.getpid()))
@@ -275,10 +289,14 @@ def start(bind='127.0.0.1',
                 web.run_app(app, host=host, port=port, access_log=None)
             else:
                 loop = asyncio.get_event_loop()
-                loop.run_until_complete(
-                    asyncio.start_unix_server(handle_unix,
-                                              path=socket.as_posix()))
-                socket.chmod(0o660)
+                if socket_unix:
+                    loop.run_until_complete(
+                        asyncio.start_unix_server(handle_socket,
+                                                  path=socket.as_posix()))
+                    socket.chmod(0o660)
+                else:
+                    loop.run_until_complete(
+                        asyncio.start_server(handle_socket, host, port))
                 loop.run_forever()
             logger.info(f'YEDB server stopped, DB: {dboptions["dbpath"]}')
         finally:
@@ -287,7 +305,7 @@ def start(bind='127.0.0.1',
             except FileNotFoundError:
                 pass
             try:
-                if socket:
+                if socket and socket_unix:
                     socket.unlink()
             except FileNotFoundError:
                 pass
@@ -297,10 +315,11 @@ if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument('DBPATH')
-    ap.add_argument('-B',
-                    '--bind',
-                    help='Host/IP:port or socket path to bind to',
-                    default='127.0.0.1:8870')
+    ap.add_argument(
+        '-B',
+        '--bind',
+        help='tcp://host:port, http://host:port or socket path to bind to',
+        default='tcp://127.0.0.1:8870')
     ap.add_argument('--pid-file', default=PID_FILE)
     ap.add_argument('--default-fmt',
                     help='Default database format',
