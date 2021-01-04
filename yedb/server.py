@@ -312,7 +312,7 @@ def start(bind='tcp://127.0.0.1',
             _stop()
 
 
-if __name__ == '__main__':
+def main():
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument('DBPATH')
@@ -338,3 +338,6 @@ if __name__ == '__main__':
           dboptions=dict(default_fmt=a.default_fmt,
                          dbpath=a.DBPATH,
                          auto_flush=not a.disable_auto_flush))
+
+if __name__ == '__main__':
+    main()
