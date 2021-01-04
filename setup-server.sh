@@ -128,7 +128,7 @@ StartLimitIntervalSec=0
 Type=forking
 User=root
 ExecStart=$DIR_ME/yedb-server start
-ExecStop=$DIR_ME/yedb-server stop
+PIDFile=$DIR_ME/var/yedbd.pid
 Restart=no
 
 [Install]

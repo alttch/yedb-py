@@ -1602,9 +1602,9 @@ class KeyDict:
 class KeyDictRemote(KeyDict):
 
     def open(self):
-        try:
+        if self.db.key_exists(key=self.key_name):
             self.data = self.db.get(key=self.key_name)
-        except KeyError:
+        else:
             self.data = {}
 
     def close(self, _write=True):
@@ -1696,9 +1696,9 @@ class KeyList:
 class KeyListRemote(KeyList):
 
     def open(self):
-        try:
+        if self.db.key_exists(key=self.key_name):
             self.data = self.db.get(key=self.key_name)
-        except KeyError:
+        else:
             self.data = []
 
     def close(self, _write=True):
