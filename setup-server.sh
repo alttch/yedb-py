@@ -149,7 +149,7 @@ if [ "$HAS_SERVICE" = "1" ]; then
   echo
   echo "To start yedbd, type:"
   echo
-  echo "  sudo systemctl start yedbd"
+  echo "  sudo systemctl start $YEDBD_SERVICE"
   echo
 fi
 
