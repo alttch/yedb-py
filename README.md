@@ -121,8 +121,10 @@ finally:
 
 ## Client/server
 
-(If http transport is used, requires manually installing "aiohttp" Python
-module)
+* If socket transport requested, the built-in in server requires "msgpack"
+  Python module
+* If HTTP transport requested, the built-in server requires "aiohttp" Python
+  module
 
 ```shell
 # listen to tcp://localhost:8870 (default), to bind UNIX socket, specify the
@@ -132,8 +134,10 @@ python3 -m yedb.server /path/to/db
 
 ### Connect a client
 
-(If HTTP transport requested, the built-in client requires "requests" Python
-module to be installed manually)
+* If socket transport requested, the built-in in client requires "msgpack"
+  Python module
+* If HTTP transport requested, the built-in client requires "requests" Python
+  module
 
 ```python
 from yedb import YEDB
