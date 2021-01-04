@@ -68,6 +68,9 @@ yedb get key1
 ## Quick client-server setup
 
 ```
+# Install required system packages
+# Debian/Ubuntu: apt-get install -y --no-install-recommends python3 python3-dev gcc
+# RedHat/Fedora/CenOS: yum install -y python3 python3-devel gcc
 sudo mkdir /opt/yedbd
 cd /opt/yedbd && curl https://raw.githubusercontent.com/alttch/yedb/main/setup-server.sh | sudo sh
 ```
