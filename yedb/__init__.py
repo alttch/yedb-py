@@ -71,6 +71,7 @@ class Session:
     """
     Session object, all methods except open/close are proxied to db
     """
+    # TODO proxy with getattr
 
     def __init__(self, db):
         self.db = db
@@ -1419,6 +1420,7 @@ class YEDB():
             else:
                 path = self.path
             try:
+                # TODO: optimize locking deletion by mask
                 for k in reversed(sorted(self.list_subkeys(name, hidden=True))):
                     self.delete(k, _no_flush=True)
                     try:
