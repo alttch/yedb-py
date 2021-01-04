@@ -21,6 +21,7 @@ sleep 2
 
 if lxc exec "$CONTAINER" -- which apt-get > /dev/null; then
   lxc exec "$CONTAINER" -- apt-get install -y --no-install-recommends python3 python3-dev python3-pip gcc || exit 1
+  lxc exec "$CONTAINER" -- pip3 install -U setuptools || exit 1
 else
   lxc exec "$CONTAINER" -- yum install -y python3 python3-devel gcc || exit 1
 fi
