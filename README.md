@@ -302,5 +302,6 @@ https://yedb.readthedocs.io/
 
 ## TODO
 
+* Fancy connection errors
 * Softer locking & async read/writes
 * Rust library
