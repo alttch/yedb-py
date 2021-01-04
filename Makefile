@@ -39,3 +39,6 @@ push:
 	git push
 
 pub: d test docs pub-pypi sver push
+
+binaries:
+	cd buildfiles && ./build.sh
