@@ -1,4 +1,4 @@
-__version__ = '0.0.48'
+__version__ = '0.0.49'
 
 DB_VERSION = 1
 
@@ -783,6 +783,7 @@ class YEDB():
                 logger.warning(f'DB {self.path} has not been closed correctly')
                 if auto_repair or self.auto_repair:
                     self.do_repair()
+        return {'name': 'yedb', 'version': __version__}
 
     def _lock_db(self, timeout=None):
         import portalocker
@@ -1064,6 +1065,17 @@ class YEDB():
                             raise KeyError(f'Key not found: {name}')
                         else:
                             return (default, None)
+
+    def update_key(self, key, data):
+        """
+        Updates dict key with values in data
+
+        Args:
+            data: dict
+        """
+        with self.key_dict(key=key) as k:
+            k.data.update(data)
+            k.set_modified()
 
     def key_dict(self, key):
         """

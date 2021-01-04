@@ -359,3 +359,11 @@
       :param key: key name
       :param value: key value
       
+   
+   .. py:method:: YEDB.update_key(key, data)
+      :module: yedb
+   
+      Updates dict key with values in data
+      
+      :param data: dict
+      

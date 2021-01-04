@@ -1,4 +1,4 @@
-__version__ = '0.0.48'
+__version__ = '0.0.49'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
@@ -66,7 +66,7 @@ REQ_MSGPACK = 2
 METHODS = [
     'test', 'get', 'set', 'list_subkeys', 'get_subkeys', 'copy', 'rename',
     'key_exists', 'explain', 'delete', 'purge', 'check', 'repair', 'info',
-    'dump_keys', 'load_keys'
+    'dump_keys', 'load_keys', 'update_key'
 ]
 
 
