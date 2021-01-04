@@ -9,7 +9,11 @@ MODS_CLIENT="icli==0.0.10 neotermcolor==2.0.8 rapidtables==0.1.11 pyyaml==5.3.1 
 
 [ -z "$YEDBD_BIND" ] && YEDBD_BIND=tcp://127.0.0.1:8870
 
-[ -z "$YEDBD_SERVICE" ] && YEDBD_SERVICE=yedbd
+if [ "$YEDBD_SERVICE" ]; then
+  [ -z "$YEDB_PS" ] && YEDB_PS=$YEDBD_SERVICE
+else
+  YEDBD_SERVICE=yedbd
+fi
 
 check_required_exec() {
   p=$1
