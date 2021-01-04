@@ -1091,6 +1091,8 @@ class YEDB():
         Args:
             key: key name
         """
+        # TODO simplify key classes
+        # leave key locking only, move other functionality to get/set
         with self.lock:
             if not self._opened:
                 raise RuntimeError('database is not opened')
