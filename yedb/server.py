@@ -339,5 +339,6 @@ def main():
                          dbpath=a.DBPATH,
                          auto_flush=not a.disable_auto_flush))
 
+
 if __name__ == '__main__':
     main()
