@@ -87,7 +87,7 @@ chmod +x "$DIR_ME/yedb" || exit 6
 
 if [ "$(id -u)" = "0" ]; then
   (
-  if ! id -u yedb > /dev/null; then
+  if ! id -u yedb > /dev/null 2>&1; then
     useradd yedb -r -d "$DIR_ME"
   fi
   chown -R yedb "$DIR_ME/var" || exit 5
