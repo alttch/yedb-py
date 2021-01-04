@@ -106,8 +106,8 @@ finally:
 socket)
 
 ```shell
-# listen to localhost:8870 (default), to bind UNIX socket, specify the full
-# socket path
+# listen to tcp://localhost:8870 (default), to bind UNIX socket, specify the
+# full socket path, to use http transport, specify http://host:port to bind to
 python3 -m yedb.server /path/to/db
 ```
 
