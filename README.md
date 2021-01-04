@@ -46,6 +46,24 @@ rugged key-value data storage. We use it a lot and hope you'll like it too.
 Note: YEDB is good on SSDs and SD cards. As it immediately syncs all the data
 written, it can work on classic HDDs really slowly.
 
+## Performance
+
+If auto-flush is enabled, modern SSDs give about 200-300 keys/sec written with
+auto-flush enabled. The write speed can be 10-15 times faster without it, but
+we would not recommend turning auto-flush off, as it is the key feature of
+YEDB.
+
+Reading speed varies:
+
+* for embedded: 30-40k keys/second (70-100k keys/second when cached).
+
+* for UNIX/TCP socket: 7-15k keys/second
+
+* for HTTP: 700-800 keys/second. Transport via HTTP is mostly slow because YEDB
+  client uses synchronous "requests" library (while the default server is
+  async). To get better results, consider tuning the server manually and use
+  custom async requests.
+
 ## Quick start
 
 ```shell
