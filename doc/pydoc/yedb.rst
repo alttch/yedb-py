@@ -110,7 +110,7 @@
    Key parts are split with "/" symbols
    
    If dbpath is specified as HTTP/HTTPS URI, the object transforms itself
-   into JSON RPC client (methods, not listed at yedb.async_server.METHODS
+   into JSON RPC client (methods, not listed at yedb.server.METHODS
    become unimplemented)
    
    :param dbpath: database directory

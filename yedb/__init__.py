@@ -65,6 +65,9 @@ def _format_debug_value(v):
 
 
 class Session:
+    """
+    Session object, all methods except open/close are proxied to db
+    """
 
     def __init__(self, db):
         self.db = db
@@ -135,10 +138,23 @@ class Session:
     def set(self, *args, **kwargs):
         return self.db.set(*args, **kwargs)
 
+    def open(self):
+        """
+        Open session
+        """
+        return
+
     def __enter__(self):
+        # self.open()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        """
+        Close session
+        """
         try:
             g.db_socket.close()
         except:
@@ -160,6 +176,9 @@ class YEDB():
         return db_socket
 
     def session(self):
+        """
+        Get session object
+        """
         return Session(self)
 
     def _remote_call(self, method, **kwargs):
@@ -288,7 +307,7 @@ class YEDB():
         Key parts are split with "/" symbols
 
         If dbpath is specified as HTTP/HTTPS URI, the object transforms itself
-        into JSON RPC client (methods, not listed at yedb.async_server.METHODS
+        into JSON RPC client (methods, not listed at yedb.server.METHODS
         become unimplemented)
 
         Args:
@@ -333,7 +352,7 @@ class YEDB():
                 self.http_auth = Auth(username, password)
             else:
                 self.http_auth = None
-            from yedb.async_server import METHODS
+            from yedb.server import METHODS
             for f in dir(self):
                 fn = getattr(self, f)
                 if fn.__class__.__name__ == 'method':

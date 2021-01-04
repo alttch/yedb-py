@@ -67,7 +67,7 @@ chmod 700 "$DIR_ME/var" || exit 5
 cat > "$DIR_ME/yedb-server" << EOF
 #!/bin/sh
 
-"$DIR_ME/venv/bin/python3" -m yedb.async_server \\
+"$DIR_ME/venv/bin/python3" -m yedb.server \\
 --pid-file "$DIR_ME/var/yedbd.pid" -B $YEDBD_BIND \\
 --default-fmt msgpack "$DIR_ME/var/db"
 EOF
