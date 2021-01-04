@@ -1,11 +1,15 @@
 def _bm_set_key(db, n, x, iters, threads, v):
-    for z in range(x * int(iters / threads), (x + 1) * int(iters / threads)):
-        db.set(key=f'.benchmark/{n}/key{z}', value=v)
+    with db.session() as s:
+        for z in range(x * int(iters / threads),
+                       (x + 1) * int(iters / threads)):
+            s.set(key=f'.benchmark/{n}/key{z}', value=v)
 
 
 def _bm_get_key(db, n, x, iters, threads):
-    for z in range(x * int(iters / threads), (x + 1) * int(iters / threads)):
-        db.get(key=f'.benchmark/{n}/key{z}')
+    with db.session() as s:
+        for z in range(x * int(iters / threads),
+                       (x + 1) * int(iters / threads)):
+            s.get(key=f'.benchmark/{n}/key{z}')
 
 
 def cli():
@@ -486,7 +490,7 @@ def cli():
                     suffix = '.py'
                 else:
                     suffix = '.yaml'
-                fname = sha256(f'{db.db}/{key}'.encode()).hexdigest()
+                fname = sha256(f'{db.path}/{key}'.encode()).hexdigest()
                 tmpfile = Path(f'{tempfile.gettempdir()}/{fname}.tmp{suffix}')
                 if value == '':
                     tmpfile.write_text('')
@@ -620,7 +624,7 @@ def cli():
                     if k == 'created':
                         v = fmt_time(v, 'ns')
                     data.append(dict(name=k, value=v))
-                data.append(dict(name='connection', value=db.db))
+                data.append(dict(name='connection', value=db.path))
                 data.append(dict(name='timeout', value=db.timeout))
                 if kwargs.get('full'):
                     if remote:

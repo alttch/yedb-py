@@ -14,6 +14,11 @@ FMTS = ['json', 'yaml', 'msgpack', 'cbor', 'pickle']
 
 SERVER_ID = 'yedb-altt-py'
 
+DB_MODE_LOCAL = 0
+DB_MODE_UNIX_SOCKET = 1
+DB_MODE_HTTP = 2
+DB_MODE_HTTPS = 3
+
 import threading
 import jsonschema
 
@@ -59,6 +64,87 @@ def _format_debug_value(v):
     return dv.replace('\n', ' ').replace('\r', '').replace('\t', '')
 
 
+class Session:
+
+    def __init__(self, db):
+        self.db = db
+
+    def check(self, *args, **kwargs):
+        return self.db.check(*args, **kwargs)
+
+    def clear(self, *args, **kwargs):
+        return self.db.clear(*args, **kwargs)
+
+    def close(self, *args, **kwargs):
+        return self.db.close(*args, **kwargs)
+
+    def convert_fmt(self, *args, **kwargs):
+        return self.db.convert_fmt(*args, **kwargs)
+
+    def copy(self, *args, **kwargs):
+        return self.db.copy(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return self.db.delete(*args, **kwargs)
+
+    def do_repair(self, *args, **kwargs):
+        return self.db.do_repair(*args, **kwargs)
+
+    def dump_keys(self, *args, **kwargs):
+        return self.db.dump_keys(*args, **kwargs)
+
+    def explain(self, *args, **kwargs):
+        return self.db.explain(*args, **kwargs)
+
+    def get(self, *args, **kwargs):
+        return self.db.get(*args, **kwargs)
+
+    def get_subkeys(self, *args, **kwargs):
+        return self.db.get_subkeys(*args, **kwargs)
+
+    def info(self, *args, **kwargs):
+        return self.db.info(*args, **kwargs)
+
+    def key_dict(self, *args, **kwargs):
+        return self.db.key_dict(*args, **kwargs)
+
+    def key_exists(self, *args, **kwargs):
+        return self.db.key_exists(*args, **kwargs)
+
+    def key_list(self, *args, **kwargs):
+        return self.db.key_list(*args, **kwargs)
+
+    def list_subkeys(self, *args, **kwargs):
+        return self.db.list_subkeys(*args, **kwargs)
+
+    def load_keys(self, *args, **kwargs):
+        return self.db.load_keys(*args, **kwargs)
+
+    def open(self, *args, **kwargs):
+        return self.db.open(*args, **kwargs)
+
+    def purge(self, *args, **kwargs):
+        return self.db.purge(*args, **kwargs)
+
+    def rename(self, *args, **kwargs):
+        return self.db.rename(*args, **kwargs)
+
+    def repair(self, *args, **kwargs):
+        return self.db.repair(*args, **kwargs)
+
+    def set(self, *args, **kwargs):
+        return self.db.set(*args, **kwargs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            g.db_socket.close()
+        except:
+            pass
+
+
 class YEDB():
     """
     File-based database
@@ -73,13 +159,16 @@ class YEDB():
         db_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8192)
         return db_socket
 
+    def session(self):
+        return Session(self)
+
     def _remote_call(self, method, **kwargs):
 
         def _reopen_socket():
             if debug:
-                logger.debug(f'(re)opening socket {self.db}')
+                logger.debug(f'(re)opening socket {self.path}')
             db_socket = self._init_socket()
-            db_socket.connect(self.db)
+            db_socket.connect(self.path)
             g.db_socket = db_socket
             return db_socket
 
@@ -88,10 +177,10 @@ class YEDB():
             import msgpack
             use_msgpack = True
             data = msgpack.dumps(req)
-            if not self.use_db_socket:
+            if self.mode in (DB_MODE_HTTP, DB_MODE_HTTPS):
                 headers = {'Content-Type': 'application/x-msgpack'}
         except ModuleNotFoundError:
-            if self.use_db_socket:
+            if self.mode == DB_MODE_UNIX_SOCKET:
                 raise
             try:
                 import rapidjson as json
@@ -102,8 +191,8 @@ class YEDB():
             headers = {'Content-Type': 'application/json'}
         if debug:
             logger.debug(f'JRPC ({"msgpack" if use_msgpack else "json"}) '
-                         f'{self.db} method={method} auth={self.http_auth}')
-        if self.use_db_socket:
+                         f'{self.path} method={method} auth={self.http_auth}')
+        if self.mode == DB_MODE_UNIX_SOCKET:
             try:
                 db_socket = g.db_socket
             except AttributeError:
@@ -134,7 +223,7 @@ class YEDB():
                 g.session = session
                 post = session.post
             # from requests import post
-            r = post(self.db,
+            r = post(self.path,
                      data=data,
                      headers=headers,
                      timeout=self.timeout,
@@ -223,9 +312,14 @@ class YEDB():
         if path.startswith('http://') or path.startswith('https://') or Path(
                 path).is_socket() or path.endswith('.sock') or path.endswith(
                     '.socket'):
-            self.db = path
-            self.use_db_socket = Path(path).is_socket() or path.endswith(
-                '.sock') or path.endswith('.socket')
+            self.path = path
+            if Path(path).is_socket() or path.endswith(
+                    '.sock') or path.endswith('.socket'):
+                self.mode = DB_MODE_UNIX_SOCKET
+            elif path.startswith('https://'):
+                self.mode = DB_MODE_HTTPS
+            else:
+                self.mode = DB_MODE_HTTP
             username = kwargs.get('http_username')
             if username:
                 password = kwargs.get('http_password', '')
@@ -247,23 +341,24 @@ class YEDB():
                         setattr(self, f, self._open_remote)
                     elif f == 'close':
                         setattr(self, f, self._close_remote)
-                    elif not f.startswith('_'):
+                    elif not f.startswith('_') and f not in ['session']:
                         if f in METHODS:
                             setattr(self, f, partial(self._remote_call, f))
                         else:
                             setattr(self, f, self._not_implemented)
         else:
             self.lock = RLock()
-            self.db = Path(dbpath).absolute()
+            self.mode = DB_MODE_LOCAL
+            self.path = Path(dbpath).absolute()
             self.default_fmt = default_fmt if default_fmt else DEFAULT_FMT
             self.default_checksums = default_checksums
-            self._dbpath_len = len(self.db.absolute().as_posix()) + 1
+            self._dbpath_len = len(self.path.absolute().as_posix()) + 1
             self._key_locks = {}
             self._opened = False
             self._flock = None
             self._flock_fh = None
-            self.lock_file = (self.db / 'db.lock').absolute()
-            self.meta_file = (self.db / '.yedb').absolute()
+            self.lock_file = (self.path / 'db.lock').absolute()
+            self.meta_file = (self.path / '.yedb').absolute()
             self.write_modified_only = True
             self.auto_flush = True
             self.lock_ex = True
@@ -292,7 +387,7 @@ class YEDB():
             else:
                 key = key[:key.rfind('/')]
 
-    def validate_schema(self, key, value):
+    def _validate_schema(self, key, value):
         if key.startswith('.schema/') or key == '.schema':
             if value == {'type': 'code.python'}:
                 return
@@ -332,7 +427,7 @@ class YEDB():
         self.dbinfo = {
             'lock_ex': self.lock_ex,
             'auto_flush': self.auto_flush,
-            'path': Path(self.db),
+            'path': Path(self.path),
             'server': [SERVER_ID, __version__]
         }
         dump_kwargs = None
@@ -427,20 +522,20 @@ class YEDB():
             except FileNotFoundError:
                 pass
 
-    def calc_digest(self, s):
+    def _calc_digest(self, s):
         from hashlib import sha256
         return sha256(s if isinstance(s, bytes) else s.encode()).digest()
 
     def _load_value(self, s):
         if self.checksums:
             if self.checksum_binary:
-                if self.calc_digest(s[40:]) == s[:32]:
+                if self._calc_digest(s[40:]) == s[:32]:
                     return self.loads(s[40:])
                 else:
                     raise ChecksumError
             else:
                 checksum, date, value = s.split(maxsplit=2)
-                if self.calc_digest(value).hex() == checksum:
+                if self._calc_digest(value).hex() == checksum:
                     return self.loads(value)
                 else:
                     raise ChecksumError
@@ -452,7 +547,7 @@ class YEDB():
         if isinstance(s, str) and not s.endswith('\n'):
             s += '\n'
         if self.checksums:
-            checksum = self.calc_digest(s)
+            checksum = self._calc_digest(s)
             val = checksum if self.checksum_binary else checksum.hex()
             if stime is None:
                 stime = time_ns()
@@ -527,7 +622,7 @@ class YEDB():
             self.open(_force_lock_ex=True)
             try:
                 if new_fmt != self.fmt or checksums != self.checksums:
-                    new_db = self.__class__(self.db,
+                    new_db = self.__class__(self.path,
                                             default_fmt=new_fmt,
                                             default_checksums=checksums)
                     new_db.open(lock_ex=False,
@@ -591,7 +686,7 @@ class YEDB():
         """
         import json
         if debug:
-            logger.debug(f'opening database {self.db}')
+            logger.debug(f'opening database {self.path}')
         with self.lock:
             self.cache.clear()
             self._parse_options(kwargs)
@@ -612,15 +707,15 @@ class YEDB():
                         if debug:
                             logger.debug(f'database not initialized')
                         raise
-                    if self.db.is_dir():
+                    if self.path.is_dir():
                         if debug:
                             logger.debug(f'no meta info file {self.meta_file}')
-                        raise RuntimeError(f'Database directory {self.db} '
+                        raise RuntimeError(f'Database directory {self.path} '
                                            'exists but no meta info found')
                     self.fmt = self.default_fmt
                     self.checksums = self.default_checksums
                     self._init_db()
-                    self.db.mkdir(exist_ok=True)
+                    self.path.mkdir(exist_ok=True)
                     self._init_meta()
                     self._write_meta()
 
@@ -637,13 +732,13 @@ class YEDB():
             if debug:
                 logger.debug(f'database opened')
                 for k, v in self.info().items():
-                    logger.debug(f'{self.db.name}.{k}={v}')
+                    logger.debug(f'{self.path.name}.{k}={v}')
 
             if self.auto_flush:
-                self._sync_dirs([self.db])
+                self._sync_dirs([self.path])
 
             if self.repair_recommended:
-                logger.warning(f'DB {self.db} has not been closed correctly')
+                logger.warning(f'DB {self.path} has not been closed correctly')
                 if auto_repair or self.auto_repair:
                     self.do_repair()
 
@@ -669,13 +764,13 @@ class YEDB():
                     logger.debug(f'removing lock file {self.lock_file}')
                 self._flock.release()
                 try:
-                    (self.db / 'db.lock').unlink()
+                    (self.path / 'db.lock').unlink()
                 except FileNotFoundError:
                     pass
             self._opened = False
             self.cache.clear()
             if self.auto_flush:
-                self._sync_dirs([self.db])
+                self._sync_dirs([self.path])
 
     def __enter__(self, *args, **kwargs):
         """
@@ -714,7 +809,7 @@ class YEDB():
             with l:
                 keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
                                                                          name)
-                keydir = self.db / keypath
+                keydir = self.path / keypath
                 keydir.mkdir(exist_ok=True, parents=True)
                 key_file = keydir / (keyn + self.suffix)
                 if self.write_modified_only:
@@ -727,7 +822,7 @@ class YEDB():
                     except KeyError:
                         pass
                 if not _ignore_schema:
-                    self.validate_schema(key, value)
+                    self._validate_schema(key, value)
                 self._write(key_file,
                             self._dump_value(value, stime=stime),
                             flush=flush or self.auto_flush)
@@ -774,12 +869,12 @@ class YEDB():
                 with l2:
                     keypath, keyn = name.rsplit(
                         '/', 1) if '/' in name else ('', name)
-                    keydir = self.db / keypath
+                    keydir = self.path / keypath
                     key_file = keydir / (keyn + self.suffix)
 
                     keypath, keyn = new_name.rsplit(
                         '/', 1) if '/' in new_name else ('', new_name)
-                    keydir = self.db / keypath
+                    keydir = self.path / keypath
                     keydir.mkdir(exist_ok=True, parents=True)
                     dst_key_file = keydir / (keyn + self.suffix)
 
@@ -888,7 +983,7 @@ class YEDB():
             with l:
                 keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
                                                                          name)
-                keydir = self.db / keypath
+                keydir = self.path / keypath
                 key_file = keydir / (keyn + self.suffix)
                 if _check_exists_only:
                     return name in self.cache or key_file.exists()
@@ -947,7 +1042,7 @@ class YEDB():
                 l = RLock()
                 self._key_locks[name] = l
             keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
-            keydir = self.db / keypath
+            keydir = self.path / keypath
             keydir.mkdir(exist_ok=True, parents=True)
             key_file = keydir / (keyn + self.suffix)
             return KeyDict(name, key_file, l, self)
@@ -971,7 +1066,7 @@ class YEDB():
                 l = RLock()
                 self._key_locks[name] = l
             keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
-            keydir = self.db / keypath
+            keydir = self.path / keypath
             keydir.mkdir(exist_ok=True, parents=True)
             key_file = keydir / (keyn + self.suffix)
             return KeyList(name, key_file, l, self)
@@ -1004,13 +1099,13 @@ class YEDB():
                 l = RLock()
                 self._key_locks[name] = l
             with l:
-                dn = self.db / name
+                dn = self.path / name
                 if dn.is_dir() and recursive:
                     self._delete_subkeys(name, flush=False)
                     dts.add(dn.parent)
                 keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
                                                                          name)
-                keydir = self.db / keypath
+                keydir = self.path / keypath
                 key_file = keydir / (keyn + self.suffix)
                 if not _dir_only:
                     try:
@@ -1034,7 +1129,7 @@ class YEDB():
                 except KeyError:
                     pass
                 for p in [keydir] + list(keydir.parents):
-                    if p == self.db:
+                    if p == self.path:
                         break
                     try:
                         p.rmdir()
@@ -1066,18 +1161,18 @@ class YEDB():
             raise exceptions, as the broken database is still usable, except
             may miss some keys or they may be broken.
         """
-        logger.warning(f'{self.db} repair started')
+        logger.warning(f'{self.path} repair started')
         removed = 0
         restored = 0
         try:
             for k, v in self.repair():
                 if v:
-                    logger.info(f'{self.db} key {k} restored')
+                    logger.info(f'{self.path} key {k} restored')
                     restored += 1
                 else:
-                    logger.error(f'{self.db} key {k} is broken, removed')
+                    logger.error(f'{self.path} key {k} is broken, removed')
                     removed += 1
-            logger.warning(f'{self.db} repair completed, {restored} '
+            logger.warning(f'{self.path} repair completed, {restored} '
                            f'keys restored, {removed} keys removed')
             return True
         except Exception as e:
@@ -1111,7 +1206,7 @@ class YEDB():
             if not self._opened:
                 raise RuntimeError('database is not opened')
             # find possible valid keys
-            for d in self.db.glob('**/*.tmp'):
+            for d in self.path.glob('**/*.tmp'):
                 try:
                     self._load_value(self.read(d))
                     if debug:
@@ -1162,7 +1257,7 @@ class YEDB():
             if not self._opened:
                 raise RuntimeError('database is not opened')
             # clean up files
-            for d in self.db.glob('**/*'):
+            for d in self.path.glob('**/*'):
                 if not d.is_dir() and d != self.lock_file and \
                         d != self.meta_file and d.suffix != self.suffix:
                     if debug:
@@ -1181,7 +1276,7 @@ class YEDB():
                         if flush or self.auto_flush:
                             dts.add(d.parent)
             # clean up directories
-            for d in reversed(list((self.db.glob('**')))):
+            for d in reversed(list((self.path.glob('**')))):
                 if d.is_dir():
                     try:
                         d.rmdir()
@@ -1205,7 +1300,7 @@ class YEDB():
         with self.lock:
             if not self._opened:
                 raise RuntimeError('database is not opened')
-            for d in self.db.glob('**/*'):
+            for d in self.path.glob('**/*'):
                 if d.suffix == self.suffix or d.suffix == '.tmp':
                     try:
                         if d.suffix == '.tmp':
@@ -1232,8 +1327,8 @@ class YEDB():
         with self.lock:
             if not self._opened:
                 raise RuntimeError('database is not opened')
-            for f in self.db.glob(f'{name}/**/*{self.suffix}'
-                                  if name else f'**/*{self.suffix}'):
+            for f in self.path.glob(f'{name}/**/*{self.suffix}'
+                                    if name else f'**/*{self.suffix}'):
                 name = f.absolute().as_posix()[self.
                                                _dbpath_len:-self._suffix_len]
                 if hidden or not name.startswith('.'):
@@ -1249,9 +1344,9 @@ class YEDB():
             if not self._opened:
                 raise RuntimeError('database is not opened')
             if name:
-                path = self.db / name
+                path = self.path / name
             else:
-                path = self.db
+                path = self.path
             try:
                 for k in reversed(sorted(self.list_subkeys(name, hidden=True))):
                     self.delete(k, _no_flush=True)
@@ -1425,7 +1520,7 @@ class KeyDict:
                         self.key_name, {}) != self.data:
                     if debug:
                         logger.debug(f'requesting to update {self.key_name}')
-                    self.db.validate_schema(self.key_name, self.data)
+                    self.db._validate_schema(self.key_name, self.data)
                     self.db._write(self.key_file,
                                    self.db._dump_value(self.data))
                     self.db.cache[self.key_name] = self.data
@@ -1506,7 +1601,7 @@ class KeyList:
                         self.key_name, {}) != self.data:
                     if debug:
                         logger.debug(f'requesting to update {self.key_name}')
-                    self.db.validate_schema(self.key_name, self.data)
+                    self.db._validate_schema(self.key_name, self.data)
                     self.db._write(self.key_file,
                                    self.db._dump_value(self.data))
                     self.db.cache[self.key_name] = self.data
