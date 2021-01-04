@@ -132,8 +132,8 @@ python3 -m yedb.server /path/to/db
 
 ### Connect a client
 
-(the built-in client requires "requests" Python module to be installed
-manually)
+(If HTTP transport requested, the built-in client requires "requests" Python
+module to be installed manually)
 
 ```python
 from yedb import YEDB
