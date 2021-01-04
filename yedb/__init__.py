@@ -235,11 +235,13 @@ class YEDB():
                 raise
         else:
             try:
-                post = g.session.post
+                post = g.db_socket.post
             except AttributeError:
+                if debug:
+                    logger.debug(f'(re)opening http session')
                 import requests
                 session = requests.Session()
-                g.session = session
+                g.db_socket = session
                 post = session.post
             # from requests import post
             r = post(self.path,
