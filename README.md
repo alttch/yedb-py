@@ -96,6 +96,8 @@ Use env to specify extra options:
 
 * YEDBD\_BIND - override bind to (tcp://host:port, http://host:port or path to
   UNIX socket)
+* YEDBD\_SERVICE - system service name
+* YEDB\_PS - CLI prompt
 * PIP\_EXTRA\_OPTIONS - specify pip extra options
 * PYTHON - override Python path
 * PIP - override pip path
