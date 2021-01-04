@@ -9,6 +9,8 @@ MODS_CLIENT="icli neotermcolor rapidtables pyyaml tqdm pygments getch"
 
 [ -z "$YEDBD_BIND" ] && YEDBD_BIND=tcp://127.0.0.1:8870
 
+[ -z "$YEDBD_SERVICE" ] && YEDBD_SERVICE=yedbd
+
 check_required_exec() {
   p=$1
   printf "Checking %s => " "$p"
@@ -67,11 +69,36 @@ chmod 700 "$DIR_ME/var" || exit 5
 cat > "$DIR_ME/yedb-server" << EOF
 #!/bin/sh
 
-"$DIR_ME/venv/bin/python3" -m yedb.server \\
---pid-file "$DIR_ME/var/yedbd.pid" -B $YEDBD_BIND \\
---default-fmt msgpack "$DIR_ME/var/db"
+case \$1 in
+
+start)
+  sh $DIR_ME/safe-run.sh > /dev/null 2>&1 &
+  ;;
+stop)
+  kill "\$(cat "$DIR_ME/var/yedbd.pid")"
+  ;;
+*)
+  echo "Usage: \$0 <start|stop>"
+  ;;
+esac
+
 EOF
-)|| exit 6
+) || exit 6
+
+(
+cat > "$DIR_ME/safe-run.sh" << EOF
+#!/bin/sh
+
+while [ 1 ]; do
+  "$DIR_ME/venv/bin/python3" -m yedb.server \\
+  --pid-file "$DIR_ME/var/yedbd.pid" -B $YEDBD_BIND \\
+  --default-fmt msgpack "$DIR_ME/var/db"
+  if [ \$? -eq 0 ]; then
+    break
+  fi
+done
+EOF
+) || exit 6
 
 chmod +x "$DIR_ME/yedb-server" || exit 6
 
@@ -81,7 +108,7 @@ cat > "$DIR_ME/yedb" << EOF
 
 YEDB_PS="$YEDB_PS" "$DIR_ME/venv/bin/yedb" "$YEDBD_BIND" "\$@"
 EOF
-)|| exit 6
+) || exit 6
 
 chmod +x "$DIR_ME/yedb" || exit 6
 
@@ -91,22 +118,23 @@ if [ "$(id -u)" = "0" ]; then
     useradd yedb -r -d "$DIR_ME"
   fi
   chown -R yedb "$DIR_ME/var" || exit 5
-  cat > /etc/systemd/system/yedbd.service << EOF
+  cat > /etc/systemd/system/${YEDBD_SERVICE}.service << EOF
 [Unit]
 Description=YEDB daemon
 After=network.target
 StartLimitIntervalSec=0
+
 [Service]
-Type=simple
-Restart=always
-RestartSec=1
-User=yedb
-ExecStart="$DIR_ME/yedb-server"
+Type=forking
+User=root
+ExecStart=$DIR_ME/yedb-server start
+ExecStop=$DIR_ME/yedb-server stop
+Restart=no
 
 [Install]
 WantedBy=multi-user.target
 EOF
-)  || exit 7
+) || exit 7
 HAS_SERVICE=1
 else
   echo

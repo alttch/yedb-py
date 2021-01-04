@@ -7,6 +7,7 @@ DEFAULT_PORT = 8870
 import yedb
 import platform
 import os
+import sys
 import time
 import platform
 import asyncio
@@ -16,6 +17,7 @@ from pathlib import Path
 from logging.handlers import SysLogHandler
 
 import logging
+import signal
 
 logger = logging.getLogger('yedb')
 
@@ -68,18 +70,6 @@ METHODS = [
     'key_exists', 'explain', 'delete', 'purge', 'check', 'repair', 'info',
     'dump_keys', 'load_keys', 'update_key'
 ]
-
-
-def shutdown(signum, frame):
-    global server_active
-    server_active = False
-
-
-def block():
-    global server_active
-    server_active = True
-    while server_active:
-        time.sleep(0.1)
 
 
 class InvalidRequest(Exception):
@@ -277,14 +267,33 @@ def start(bind='tcp://127.0.0.1',
     else:
         raise ValueError('Invalid bind format')
 
+    def _stop():
+        logger.info(f'YEDB server stopped, DB: {dboptions["dbpath"]}')
+        try:
+            p.unlink()
+        except FileNotFoundError:
+            pass
+        try:
+            if socket and socket_unix:
+                socket.unlink()
+        except FileNotFoundError:
+            pass
+
+    def shutdown(signum, frame):
+        sys.exit(0)
+
     p = Path(pid_file)
-    p.write_text(str(os.getpid()))
+    pid = os.getpid()
+    p.write_text(str(pid))
+
+    signal.signal(signal.SIGINT, shutdown)
+    signal.signal(signal.SIGTERM, shutdown)
 
     with yedb.YEDB(auto_repair=not disable_auto_repair, **dboptions) as db:
         yedb.db = db
 
         logger.info(f'YEDB server started at {bind}, '
-                    f'DB: {dboptions["dbpath"]}')
+                    f'DB: {dboptions["dbpath"]}, PID: {pid}')
         try:
             if app:
                 web.run_app(app, host=host, port=port, access_log=None)
@@ -299,17 +308,8 @@ def start(bind='tcp://127.0.0.1',
                     loop.run_until_complete(
                         asyncio.start_server(handle_socket, host, port))
                 loop.run_forever()
-            logger.info(f'YEDB server stopped, DB: {dboptions["dbpath"]}')
         finally:
-            try:
-                p.unlink()
-            except FileNotFoundError:
-                pass
-            try:
-                if socket and socket_unix:
-                    socket.unlink()
-            except FileNotFoundError:
-                pass
+            _stop()
 
 
 if __name__ == '__main__':
