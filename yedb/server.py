@@ -1,4 +1,4 @@
-__version__ = '0.0.47'
+__version__ = '0.0.48'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
@@ -215,7 +215,7 @@ async def handle_socket(reader, writer):
             data = b''
             try:
                 frame = await reader.read(6)
-                if not frame:
+                if not frame or frame[0] != 1 or frame[1] != 2:
                     break
                 frame_len = int.from_bytes(frame[2:], 'little')
                 while len(data) < frame_len:
@@ -227,7 +227,7 @@ async def handle_socket(reader, writer):
             result = await handle_jrpc(payload, 'localhost')
             if result:
                 data = msgpack.dumps(result)
-                writer.write(b'\x01\x00' + len(data).to_bytes(4, 'little') +
+                writer.write(b'\x01\x02' + len(data).to_bytes(4, 'little') +
                              data)
                 await writer.drain()
     except Exception as e:

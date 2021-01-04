@@ -1,4 +1,4 @@
-__version__ = '0.0.47'
+__version__ = '0.0.48'
 
 DB_VERSION = 1
 
@@ -228,14 +228,14 @@ class YEDB():
             try:
                 for i in range(2):
                     try:
-                        db_socket.sendall(b'\x01\x00' +
+                        db_socket.sendall(b'\x01\x02' +
                                           len(data).to_bytes(4, 'little') +
                                           data)
                         frame = db_socket.recv(6)
-                        if frame:
-                            break
-                        else:
+                        if not frame or frame[0] != 1 or frame[1] != 2:
                             raise BrokenPipeError
+                        else:
+                            break
                     except BrokenPipeError:
                         db_socket = _reopen_socket()
                 frame_len = int.from_bytes(frame[2:], 'little')

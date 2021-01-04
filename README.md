@@ -166,11 +166,16 @@ YEDB uses JSON RPC (https://www.jsonrpc.org/) as the API protocol. Any method,
 listed in yedb.server.METHODS can be called. Payloads can be packed either with
 JSON or with MessagePack.
 
-If working via UNIX socket:
+If working via UNIX or TCP socket:
 
 * only MessagePack payload encoding is supported
 
-* Request/response format: FRAME\_LEN(32-bit little-endian) + frame
+* Request/response format: PROTO\_VER + PROTO\_TYPE + FRAME\_LEN(32-bit
+  little-endian) + frame
+
+Where PROTO\_VER = protocol version (0x01) and PROTO\_TYPE = protocol/encoding
+type (0x02 for MessagePack, which is the only protocol supported by the
+built-in server).
 
 ### Working with complicated data structures (embedded only)
 
