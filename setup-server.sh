@@ -42,13 +42,19 @@ if ! command -v $PIP > /dev/null ; then
 fi
 
 if [ ! -d venv ]; then
+  SETUP_VENV=1
   echo "Configuring VENV"
   ${PYTHON} -m venv ${FLAGS} "$DIR_ME/venv" || exit 2
-  "$DIR_ME/venv/bin/pip3" install -U wheel setuptools || exit 2
+else
+  SETUP_VENV=0
 fi
 
 if [ "$NEED_PIP" = "1" ]; then
   (curl https://bootstrap.pypa.io/get-pip.py | "$DIR_ME/venv/bin/python") || exit 3
+fi
+
+if [ "$SETUP_VENV" = "1" ]; then
+  "$DIR_ME/venv/bin/pip3" install -U wheel setuptools || exit 4
 fi
 
 "$DIR_ME/venv/bin/pip3" install -U $MODS $PIP_EXTRA_OPTIONS || exit 4
