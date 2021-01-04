@@ -133,6 +133,8 @@ from yedb import YEDB
 with YEDB('http://localhost:8870') as db:
     with db.session() as session:
         # do some stuff, remember to send all parameters as kwargs
+        # session.set(key='key1', value='val1')
+        # print(session.get(key='key1'))
 ```
 
 ### Building own client
