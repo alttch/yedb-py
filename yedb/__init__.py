@@ -12,6 +12,8 @@ SOCKET_BUF = 8192
 
 FMTS = ['json', 'yaml', 'msgpack', 'cbor', 'pickle']
 
+SERVER_ID = 'yedb-altt-py'
+
 import threading
 import jsonschema
 
@@ -110,12 +112,10 @@ class YEDB():
                 db_socket = _reopen_socket()
             try:
                 try:
-                    db_socket.sendall(
-                        len(data).to_bytes(4, 'little') + data)
+                    db_socket.sendall(len(data).to_bytes(4, 'little') + data)
                 except BrokenPipeError:
                     db_socket = _reopen_socket()
-                    db_socket.sendall(
-                        len(data).to_bytes(4, 'little') + data)
+                    db_socket.sendall(len(data).to_bytes(4, 'little') + data)
                 frame = db_socket.recv(4)
                 frame_len = int.from_bytes(frame, 'little')
                 response = b''
@@ -333,6 +333,7 @@ class YEDB():
             'lock_ex': self.lock_ex,
             'auto_flush': self.auto_flush,
             'path': Path(self.db),
+            'server': [SERVER_ID, __version__]
         }
         dump_kwargs = None
         if self.fmt == 'json':
