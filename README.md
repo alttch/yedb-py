@@ -48,10 +48,9 @@ written, it can work on classic HDDs really slowly.
 
 ## Performance
 
-If auto-flush is enabled, modern SSDs give about 200-300 keys/sec written with
-auto-flush enabled. The write speed can be 10-15 times faster without it, but
-we would not recommend turning auto-flush off, as it is the key feature of
-YEDB.
+Modern SSDs give about 200-300 keys/sec written with auto-flush enabled. The
+write speed can be 10-15 times faster without it, but we would not recommend
+turning auto-flush off, as it is the key feature of YEDB.
 
 Reading speed varies:
 
