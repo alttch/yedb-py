@@ -6,7 +6,7 @@
    :module: yedb
 
 
-.. py:class:: KeyDict(key_name, key_file, lock, db)
+.. py:class:: KeyDict(db, key_name, key_file=None, lock=None)
    :module: yedb
 
    Dictionary key object
@@ -51,7 +51,11 @@
       :param value: field value
       
 
-.. py:class:: KeyList(key_name, key_file, lock, db)
+.. py:class:: KeyDictRemote(db, key_name, key_file=None, lock=None)
+   :module: yedb
+
+
+.. py:class:: KeyList(db, key_name, key_file=None, lock=None)
    :module: yedb
 
    List key object
@@ -80,6 +84,10 @@
    
       Remove value from list
       
+
+.. py:class:: KeyListRemote(db, key_name, key_file=None, lock=None)
+   :module: yedb
+
 
 .. py:exception:: SchemaValidationError
    :module: yedb
@@ -248,6 +256,9 @@
    
       Returns KeyDict object
       
+      
+      Note: doesn't lock the key on client/server
+      
       :param key: key name
       
    
@@ -263,6 +274,8 @@
       :module: yedb
    
       Returns KeyList object
+      
+      Note: doesn't lock the key on client/server
       
       :param key: key name
       
