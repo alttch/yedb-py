@@ -108,7 +108,7 @@ socket)
 ```shell
 # listen to localhost:8870 (default), to bind UNIX socket, specify the full
 # socket path
-python3 -m yedb.async_server /path/to/db
+python3 -m yedb.server /path/to/db
 ```
 
 ### Connect a client
@@ -120,7 +120,19 @@ manually)
 from yedb import YEDB
 
 with YEDB('http://localhost:8870') as db:
-# do some stuff, remember to send all parameters as kwargs
+    # do some stuff, remember to send all parameters as kwargs
+```
+
+YEDB creates thread-local objects. If the software is using permanent threads
+or a thread pool, it is recommended to use sessions to correctly drop these
+objects at the end of the statement:
+
+```python
+from yedb import YEDB
+
+with YEDB('http://localhost:8870') as db:
+    with db.session() as session:
+        # do some stuff, remember to send all parameters as kwargs
 ```
 
 ### Building own client
