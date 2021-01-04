@@ -214,10 +214,10 @@ async def handle_socket(reader, writer):
         while True:
             data = b''
             try:
-                frame = await reader.read(4)
+                frame = await reader.read(6)
                 if not frame:
                     break
-                frame_len = int.from_bytes(frame, 'little')
+                frame_len = int.from_bytes(frame[2:], 'little')
                 while len(data) < frame_len:
                     data += await reader.read(yedb.SOCKET_BUF)
             except asyncio.TimeoutError:
@@ -227,7 +227,8 @@ async def handle_socket(reader, writer):
             result = await handle_jrpc(payload, 'localhost')
             if result:
                 data = msgpack.dumps(result)
-                writer.write(len(data).to_bytes(4, 'little') + data)
+                writer.write(b'\x01\x00' + len(data).to_bytes(4, 'little') +
+                             data)
                 await writer.drain()
     except Exception as e:
         logger.error(e)

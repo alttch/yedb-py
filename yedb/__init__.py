@@ -189,6 +189,10 @@ class YEDB():
     def _remote_call(self, method, **kwargs):
 
         def _reopen_socket():
+            try:
+                g.db_socket.close()
+            except:
+                pass
             if debug:
                 logger.debug(f'(re)opening socket {self.path}')
             db_socket = self._init_socket()
@@ -222,13 +226,19 @@ class YEDB():
             if db_socket._closed:
                 db_socket = _reopen_socket()
             try:
-                try:
-                    db_socket.sendall(len(data).to_bytes(4, 'little') + data)
-                except BrokenPipeError:
-                    db_socket = _reopen_socket()
-                    db_socket.sendall(len(data).to_bytes(4, 'little') + data)
-                frame = db_socket.recv(4)
-                frame_len = int.from_bytes(frame, 'little')
+                for i in range(2):
+                    try:
+                        db_socket.sendall(b'\x01\x00' +
+                                          len(data).to_bytes(4, 'little') +
+                                          data)
+                        frame = db_socket.recv(6)
+                        if frame:
+                            break
+                        else:
+                            raise BrokenPipeError
+                    except BrokenPipeError:
+                        db_socket = _reopen_socket()
+                frame_len = int.from_bytes(frame[2:], 'little')
                 response = b''
                 while len(response) < frame_len:
                     response += db_socket.recv(SOCKET_BUF)
