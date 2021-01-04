@@ -62,7 +62,7 @@ Reading speed varies:
 * for HTTP: 700-800 keys/second. Transport via HTTP is mostly slow because YEDB
   client uses synchronous "requests" library (while the default server is
   async). To get better results, consider tuning the server manually and use
-  custom async requests.
+  a custom async client.
 
 ## Quick start
 
