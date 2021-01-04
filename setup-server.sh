@@ -3,7 +3,7 @@
 YEDB_VERSION=0.0.45
 
 REQUIRED="realpath python3 curl"
-MODS="yedb==${YEDB_VERSION} msgpack==1.0.2 aiohttp==3.7.3"
+MODS="yedb==${YEDB_VERSION} msgpack==1.0.2"
 
 MODS_CLIENT="icli neotermcolor rapidtables pyyaml tqdm pygments getch"
 

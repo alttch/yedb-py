@@ -95,7 +95,8 @@ cd /opt/yedbd && curl https://raw.githubusercontent.com/alttch/yedb/main/setup-s
 
 Use env to specify extra options:
 
-* YEDBD\_BIND - override bind to (http://host:port or path to UNIX socket)
+* YEDBD\_BIND - override bind to (tcp://host:port, http://host:port or path to
+  UNIX socket)
 * PIP\_EXTRA\_OPTIONS - specify pip extra options
 * PYTHON - override Python path
 * PIP - override pip path
@@ -120,8 +121,8 @@ finally:
 
 ## Client/server
 
-(Requires manually installing "aiohttp" Python module, unless binding to UNIX
-socket)
+(If http transport is used, requires manually installing "aiohttp" Python
+module)
 
 ```shell
 # listen to tcp://localhost:8870 (default), to bind UNIX socket, specify the
@@ -137,7 +138,7 @@ manually)
 ```python
 from yedb import YEDB
 
-with YEDB('http://localhost:8870') as db:
+with YEDB('tcp://localhost:8870') as db:
     # do some stuff, remember to send all parameters as kwargs
 ```
 
@@ -148,7 +149,7 @@ objects at the end of the statement:
 ```python
 from yedb import YEDB
 
-with YEDB('http://localhost:8870') as db:
+with YEDB('tcp://localhost:8870') as db:
     with db.session() as session:
         # do some stuff, remember to send all parameters as kwargs
         session.set(key='key1', value='val1')
