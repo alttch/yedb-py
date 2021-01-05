@@ -171,11 +171,11 @@ If working via UNIX or TCP socket:
 
 * only MessagePack payload encoding is supported
 
-* Request/response format: PROTO\_VER + PROTO\_TYPE + FRAME\_LEN(32-bit
+* Request/response format: PROTO\_VER + DATA\_FMT + FRAME\_LEN(32-bit
   little-endian) + frame
 
-Where PROTO\_VER = protocol version (0x01) and PROTO\_TYPE = protocol/encoding
-type (0x02 for MessagePack, which is the only protocol supported by the
+Where PROTO\_VER = protocol version (0x01) and DATA\_FMT = data encoding format
+(0x02 for MessagePack, which is the only protocol supported by the
 built-in server).
 
 ### Working with complicated data structures (embedded only)
@@ -274,6 +274,13 @@ Partial/server backup:
 Use "dump\_keys" / "load\_keys" methods. If dump is created with CLI (requires
 "msgpack" Python module for that), it has the format:
 
+    DUMP\_VER + DUMP\_FMT
+
+    KEY_LEN(32-bit little-endian) + KEY
+    KEY_LEN(32-bit little-endian) + KEY
+    KEY_LEN(32-bit little-endian) + KEY
+    KEY_LEN(32-bit little-endian) + KEY
+    ....
     KEY_LEN(32-bit little-endian) + KEY
 
 ## Debugging

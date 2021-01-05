@@ -338,6 +338,7 @@ def cli():
                         f = open(kwargs.get('FILE'), 'wb')
                     fd = f if f else sys.stdout.buffer
                     c = 0
+                    fd.write(b'\x01\x02')
                     try:
                         for v in db.dump_keys(key=key):
                             data = msgpack.dumps(v)
@@ -358,6 +359,9 @@ def cli():
                     fd = f if f else sys.stdin.buffer
                     buf = []
                     c = 0
+                    x = fd.read(2)
+                    if x != b'\x01\x02':
+                        raise RuntimeError('Unsupported dump version')
                     try:
                         while True:
                             l = fd.read(4)
@@ -388,6 +392,9 @@ def cli():
                     else:
                         f = open(kwargs.get('FILE'), 'rb')
                     fd = f if f else sys.stdin.buffer
+                    x = fd.read(2)
+                    if x != b'\x01\x02':
+                        raise RuntimeError('Unsupported dump version')
                     try:
                         while True:
                             l = fd.read(4)
