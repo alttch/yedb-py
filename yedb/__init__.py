@@ -96,7 +96,7 @@ class Session:
         Close session
         """
         try:
-            g.sess_socket.close()
+            g.yedb_socket.close()
         except:
             pass
 
@@ -109,13 +109,13 @@ class YEDB():
     """
 
     def _init_socket(self):
-        sess_socket = socket.socket(
+        yedb_socket = socket.socket(
             socket.AF_UNIX if self.mode == DB_MODE_UNIX_SOCKET else
             socket.AF_INET, socket.SOCK_STREAM)
-        sess_socket.settimeout(self.timeout)
-        sess_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
-        sess_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8192)
-        return sess_socket
+        yedb_socket.settimeout(self.timeout)
+        yedb_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
+        yedb_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8192)
+        return yedb_socket
 
     def session(self):
         """
@@ -127,16 +127,16 @@ class YEDB():
 
         def _reopen_socket():
             try:
-                g.sess_socket.close()
+                g.yedb_socket.close()
             except:
                 pass
             if debug:
                 logger.debug(f'(re)opening socket {self.path}')
-            sess_socket = self._init_socket()
-            sess_socket.connect(self.path if self.mode ==
+            yedb_socket = self._init_socket()
+            yedb_socket.connect(self.path if self.mode ==
                                 DB_MODE_UNIX_SOCKET else self._tcp_path)
-            g.sess_socket = sess_socket
-            return sess_socket
+            g.yedb_socket = yedb_socket
+            return yedb_socket
 
         req = {'jsonrpc': '2.0', 'id': 1, 'method': method, 'params': kwargs}
         try:
@@ -157,41 +157,41 @@ class YEDB():
                          f'{self.path} method={method} auth={self.http_auth}')
         if self.mode != DB_MODE_HTTP:
             try:
-                sess_socket = g.sess_socket
+                yedb_socket = g.yedb_socket
             except AttributeError:
-                sess_socket = _reopen_socket()
-            if sess_socket._closed:
-                sess_socket = _reopen_socket()
+                yedb_socket = _reopen_socket()
+            if yedb_socket._closed:
+                yedb_socket = _reopen_socket()
             try:
                 for i in range(2):
                     try:
-                        sess_socket.sendall(b'\x01\x02' +
+                        yedb_socket.sendall(b'\x01\x02' +
                                             len(data).to_bytes(4, 'little') +
                                             data)
-                        frame = sess_socket.recv(6)
+                        frame = yedb_socket.recv(6)
                         if not frame or frame[0] != 1 or frame[1] != 2:
                             raise BrokenPipeError
                         else:
                             break
                     except BrokenPipeError:
-                        sess_socket = _reopen_socket()
+                        yedb_socket = _reopen_socket()
                 frame_len = int.from_bytes(frame[2:], 'little')
                 response = b''
                 while len(response) < frame_len:
-                    response += sess_socket.recv(SOCKET_BUF)
+                    response += yedb_socket.recv(SOCKET_BUF)
                 data = msgpack.loads(response, raw=False)
             except:
-                sess_socket.close()
+                yedb_socket.close()
                 raise
         else:
             try:
-                post = g.sess_socket.post
+                post = g.yedb_socket.post
             except AttributeError:
                 if debug:
                     logger.debug(f'(re)opening http session')
                 import requests
                 session = requests.Session()
-                g.sess_socket = session
+                g.yedb_socket = session
                 post = session.post
             # from requests import post
             r = post(self.path,
