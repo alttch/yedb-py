@@ -6,12 +6,10 @@
    :module: yedb
 
 
-.. py:class:: KeyDict(db, key_name, key_file=None, lock=None)
+.. py:class:: KeyDict(db, key)
    :module: yedb
 
    Dictionary key object
-   
-   Warning: thread-unsafe
    
    Should not be used directly, better usage:
    
@@ -51,16 +49,10 @@
       :param value: field value
       
 
-.. py:class:: KeyDictRemote(db, key_name, key_file=None, lock=None)
-   :module: yedb
-
-
-.. py:class:: KeyList(db, key_name, key_file=None, lock=None)
+.. py:class:: KeyList(db, key)
    :module: yedb
 
    List key object
-   
-   Warning: thread-unsafe
    
    Should not be used directly, better usage:
    
@@ -85,10 +77,6 @@
       Remove value from list
       
 
-.. py:class:: KeyListRemote(db, key_name, key_file=None, lock=None)
-   :module: yedb
-
-
 .. py:exception:: SchemaValidationError
    :module: yedb
 
@@ -111,7 +99,7 @@
       Open session
       
 
-.. py:class:: YEDB(dbpath, default_fmt='json', default_checksums=True, **kwargs)
+.. py:class:: YEDB(path, default_fmt='json', default_checksums=True, **kwargs)
    :module: yedb
 
    File-based database
@@ -135,11 +123,12 @@
    
    Key parts are split with "/" symbols
    
-   If dbpath is specified as HTTP/HTTPS URI, the object transforms itself
+   If path is specified as HTTP/HTTPS URI, the object transforms itself
    into JSON RPC client (methods, not listed at yedb.server.METHODS
    become unimplemented)
    
-   :param dbpath: database directory
+   :param path: database directory
+   :param lock_path: lock file path (default: path / db.lock)
    :param default_fmt: default data format
    :param default_checksums: use SHA256 checksums by default
    :param timeout: server timeout (for client/server mode)
