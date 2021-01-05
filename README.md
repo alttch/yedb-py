@@ -189,8 +189,6 @@ with YEDB('/path/to/db') as db:
     # If modified, the key is automatically saved at the end of the statement.
 ```
 
-Note: key objects are thread-unsafe.
-
 ## Engine formats
 
 The default engine data format is JSON
@@ -303,6 +301,5 @@ https://yedb.readthedocs.io/
 ## TODO
 
 * Fancy connection errors
-* Custom db lock location
 * Softer locking & async read/writes
 * Rust library

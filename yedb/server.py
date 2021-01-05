@@ -37,7 +37,7 @@ class DummyLock:
         return
 
 
-yedb.RLock = DummyLock
+yedb.Lock = DummyLock
 
 if os.getenv('DEBUG') == '1':
     import logging
@@ -268,7 +268,7 @@ def start(bind='tcp://127.0.0.1',
         raise ValueError('Invalid bind format')
 
     def _stop():
-        logger.info(f'YEDB server stopped, DB: {dboptions["dbpath"]}')
+        logger.info(f'YEDB server stopped, DB: {dboptions["path"]}')
         try:
             p.unlink()
         except FileNotFoundError:
@@ -293,7 +293,7 @@ def start(bind='tcp://127.0.0.1',
         yedb.db = db
 
         logger.info(f'YEDB server started at {bind}, '
-                    f'DB: {dboptions["dbpath"]}, PID: {pid}')
+                    f'DB: {dboptions["path"]}, PID: {pid}')
         try:
             if app:
                 web.run_app(app, host=host, port=port, access_log=None)
@@ -336,7 +336,7 @@ def main():
           pid_file=a.pid_file,
           disable_auto_repair=a.disable_auto_repair,
           dboptions=dict(default_fmt=a.default_fmt,
-                         dbpath=a.DBPATH,
+                         path=a.DBPATH,
                          auto_flush=not a.disable_auto_flush))
 
 

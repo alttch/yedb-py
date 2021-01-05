@@ -167,23 +167,28 @@ def test_list_get_subkeys(server):
     clear()
     with Server(server) as dbpath:
         with YEDB(dbpath) as db:
-            db.set(key='key1', value='0')
-            db.set(key='d/k1', value='1')
-            db.set(key='d/k2', value='2')
-            db.set(key='d/k3', value='3')
-            assert sorted(list(
-                db.list_subkeys(key='/'))) == ['d/k1', 'd/k2', 'd/k3', 'key1']
-            assert sorted(list(
-                db.list_subkeys())) == ['d/k1', 'd/k2', 'd/k3', 'key1']
-            assert sorted(list(
-                db.list_subkeys(key='/d'))) == ['d/k1', 'd/k2', 'd/k3']
-            assert sorted(list(
-                db.list_subkeys(key='d'))) == ['d/k1', 'd/k2', 'd/k3']
-            assert sorted([list(x) for x in db.get_subkeys()
-                          ]) == [['d/k1', '1'], ['d/k2', '2'], ['d/k3', '3'],
-                                 ['key1', '0']]
-            assert sorted([list(x) for x in (db.get_subkeys(key='d'))
-                          ]) == [['d/k1', '1'], ['d/k2', '2'], ['d/k3', '3']]
+            with db.session() as session:
+                session.set(key='key1', value='0')
+                session.set(key='d/k1', value='1')
+                session.set(key='d/k2', value='2')
+                session.set(key='d/k3', value='3')
+                assert sorted(list(session.list_subkeys(key='/'))) == [
+                    'd/k1', 'd/k2', 'd/k3', 'key1'
+                ]
+                assert sorted(list(session.list_subkeys())) == [
+                    'd/k1', 'd/k2', 'd/k3', 'key1'
+                ]
+                assert sorted(list(session.list_subkeys(key='/d'))) == [
+                    'd/k1', 'd/k2', 'd/k3'
+                ]
+                assert sorted(list(
+                    session.list_subkeys(key='d'))) == ['d/k1', 'd/k2', 'd/k3']
+                assert sorted([list(x) for x in session.get_subkeys()
+                              ]) == [['d/k1', '1'], ['d/k2', '2'],
+                                     ['d/k3', '3'], ['key1', '0']]
+                assert sorted([list(x) for x in (session.get_subkeys(key='d'))
+                              ]) == [['d/k1', '1'], ['d/k2', '2'],
+                                     ['d/k3', '3']]
 
 
 @pytest.mark.parametrize('server', [False, True])

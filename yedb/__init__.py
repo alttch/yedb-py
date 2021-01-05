@@ -27,7 +27,7 @@ import jsonschema
 
 g = threading.local()
 
-RLock = threading.RLock
+Lock = threading.RLock
 
 from pathlib import Path
 from functools import partial
@@ -71,76 +71,12 @@ class Session:
     """
     Session object, all methods except open/close are proxied to db
     """
-    # TODO proxy with getattr
 
     def __init__(self, db):
         self.db = db
 
-    def check(self, *args, **kwargs):
-        return self.db.check(*args, **kwargs)
-
-    def clear(self, *args, **kwargs):
-        return self.db.clear(*args, **kwargs)
-
-    def close(self, *args, **kwargs):
-        return self.db.close(*args, **kwargs)
-
-    def convert_fmt(self, *args, **kwargs):
-        return self.db.convert_fmt(*args, **kwargs)
-
-    def copy(self, *args, **kwargs):
-        return self.db.copy(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        return self.db.delete(*args, **kwargs)
-
-    def do_repair(self, *args, **kwargs):
-        return self.db.do_repair(*args, **kwargs)
-
-    def dump_keys(self, *args, **kwargs):
-        return self.db.dump_keys(*args, **kwargs)
-
-    def explain(self, *args, **kwargs):
-        return self.db.explain(*args, **kwargs)
-
-    def get(self, *args, **kwargs):
-        return self.db.get(*args, **kwargs)
-
-    def get_subkeys(self, *args, **kwargs):
-        return self.db.get_subkeys(*args, **kwargs)
-
-    def info(self, *args, **kwargs):
-        return self.db.info(*args, **kwargs)
-
-    def key_dict(self, *args, **kwargs):
-        return self.db.key_dict(*args, **kwargs)
-
-    def key_exists(self, *args, **kwargs):
-        return self.db.key_exists(*args, **kwargs)
-
-    def key_list(self, *args, **kwargs):
-        return self.db.key_list(*args, **kwargs)
-
-    def list_subkeys(self, *args, **kwargs):
-        return self.db.list_subkeys(*args, **kwargs)
-
-    def load_keys(self, *args, **kwargs):
-        return self.db.load_keys(*args, **kwargs)
-
-    def open(self, *args, **kwargs):
-        return self.db.open(*args, **kwargs)
-
-    def purge(self, *args, **kwargs):
-        return self.db.purge(*args, **kwargs)
-
-    def rename(self, *args, **kwargs):
-        return self.db.rename(*args, **kwargs)
-
-    def repair(self, *args, **kwargs):
-        return self.db.repair(*args, **kwargs)
-
-    def set(self, *args, **kwargs):
-        return self.db.set(*args, **kwargs)
+    def __getattr__(self, name):
+        return getattr(self.db, name)
 
     def open(self):
         """
@@ -160,7 +96,7 @@ class Session:
         Close session
         """
         try:
-            g.db_socket.close()
+            g.sess_socket.close()
         except:
             pass
 
@@ -173,13 +109,13 @@ class YEDB():
     """
 
     def _init_socket(self):
-        db_socket = socket.socket(
+        sess_socket = socket.socket(
             socket.AF_UNIX if self.mode == DB_MODE_UNIX_SOCKET else
             socket.AF_INET, socket.SOCK_STREAM)
-        db_socket.settimeout(self.timeout)
-        db_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
-        db_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8192)
-        return db_socket
+        sess_socket.settimeout(self.timeout)
+        sess_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
+        sess_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8192)
+        return sess_socket
 
     def session(self):
         """
@@ -191,16 +127,16 @@ class YEDB():
 
         def _reopen_socket():
             try:
-                g.db_socket.close()
+                g.sess_socket.close()
             except:
                 pass
             if debug:
                 logger.debug(f'(re)opening socket {self.path}')
-            db_socket = self._init_socket()
-            db_socket.connect(self.path if self.mode ==
-                              DB_MODE_UNIX_SOCKET else self._tcp_path)
-            g.db_socket = db_socket
-            return db_socket
+            sess_socket = self._init_socket()
+            sess_socket.connect(self.path if self.mode ==
+                                DB_MODE_UNIX_SOCKET else self._tcp_path)
+            g.sess_socket = sess_socket
+            return sess_socket
 
         req = {'jsonrpc': '2.0', 'id': 1, 'method': method, 'params': kwargs}
         try:
@@ -221,41 +157,41 @@ class YEDB():
                          f'{self.path} method={method} auth={self.http_auth}')
         if self.mode != DB_MODE_HTTP:
             try:
-                db_socket = g.db_socket
+                sess_socket = g.sess_socket
             except AttributeError:
-                db_socket = _reopen_socket()
-            if db_socket._closed:
-                db_socket = _reopen_socket()
+                sess_socket = _reopen_socket()
+            if sess_socket._closed:
+                sess_socket = _reopen_socket()
             try:
                 for i in range(2):
                     try:
-                        db_socket.sendall(b'\x01\x02' +
-                                          len(data).to_bytes(4, 'little') +
-                                          data)
-                        frame = db_socket.recv(6)
+                        sess_socket.sendall(b'\x01\x02' +
+                                            len(data).to_bytes(4, 'little') +
+                                            data)
+                        frame = sess_socket.recv(6)
                         if not frame or frame[0] != 1 or frame[1] != 2:
                             raise BrokenPipeError
                         else:
                             break
                     except BrokenPipeError:
-                        db_socket = _reopen_socket()
+                        sess_socket = _reopen_socket()
                 frame_len = int.from_bytes(frame[2:], 'little')
                 response = b''
                 while len(response) < frame_len:
-                    response += db_socket.recv(SOCKET_BUF)
+                    response += sess_socket.recv(SOCKET_BUF)
                 data = msgpack.loads(response, raw=False)
             except:
-                db_socket.close()
+                sess_socket.close()
                 raise
         else:
             try:
-                post = g.db_socket.post
+                post = g.sess_socket.post
             except AttributeError:
                 if debug:
                     logger.debug(f'(re)opening http session')
                 import requests
                 session = requests.Session()
-                g.db_socket = session
+                g.sess_socket = session
                 post = session.post
             # from requests import post
             r = post(self.path,
@@ -299,7 +235,7 @@ class YEDB():
 
     def __init__(
         self,
-        dbpath,
+        path,
         default_fmt=DEFAULT_FMT,
         default_checksums=True,
         **kwargs,
@@ -322,12 +258,13 @@ class YEDB():
 
         Key parts are split with "/" symbols
 
-        If dbpath is specified as HTTP/HTTPS URI, the object transforms itself
+        If path is specified as HTTP/HTTPS URI, the object transforms itself
         into JSON RPC client (methods, not listed at yedb.server.METHODS
         become unimplemented)
 
         Args:
-            dbpath: database directory
+            path: database directory
+            lock_path: lock file path (default: path / db.lock)
             default_fmt: default data format
             default_checksums: use SHA256 checksums by default
             timeout: server timeout (for client/server mode)
@@ -336,7 +273,7 @@ class YEDB():
             http_auth: auth type (basic or digest)
             cache_size: item cache size
         """
-        path = str(dbpath)
+        path = str(path)
         self.auto_repair = kwargs.get('auto_repair')
         self.cache = LRUCache(kwargs.get('cache_size', DEFAULT_CACHE_SIZE))
         self.timeout = kwargs.get('timeout', DEFAULT_TIMEOUT)
@@ -384,27 +321,25 @@ class YEDB():
                         setattr(self, f, self._open_remote)
                     elif f == 'close':
                         setattr(self, f, self._close_remote)
-                    elif f == 'key_dict':
-                        setattr(self, f, self._key_dict_remote)
-                    elif f == 'key_list':
-                        setattr(self, f, self._key_list_remote)
-                    elif not f.startswith('_') and f not in ['session']:
+                    elif not f.startswith('_') and f not in [
+                            'session', 'key_dict', 'key_list'
+                    ]:
                         if f in METHODS:
                             setattr(self, f, partial(self._remote_call, f))
                         else:
                             setattr(self, f, self._not_implemented)
         else:
-            self.lock = RLock()
+            self.lock = Lock()
             self.mode = DB_MODE_LOCAL
-            self.path = Path(dbpath).absolute()
+            self.path = Path(path).absolute()
             self.default_fmt = default_fmt if default_fmt else DEFAULT_FMT
             self.default_checksums = default_checksums
-            self._dbpath_len = len(self.path.absolute().as_posix()) + 1
-            self._key_locks = {}
+            self._path_len = len(self.path.absolute().as_posix()) + 1
             self._opened = False
             self._flock = None
             self._flock_fh = None
-            self.lock_file = (self.path / 'db.lock').absolute()
+            self.lock_file = kwargs.get('lock_path',
+                                        (self.path / 'db.lock').absolute())
             self.meta_file = (self.path / '.yedb').absolute()
             self.write_modified_only = True
             self.auto_flush = True
@@ -617,10 +552,6 @@ class YEDB():
             for k in to_purge:
                 try:
                     del self.cache[k]
-                except KeyError:
-                    pass
-                try:
-                    del self._key_locks[k]
                 except KeyError:
                     pass
 
@@ -849,32 +780,25 @@ class YEDB():
                 raise RuntimeError('database is not opened')
             if not name:
                 raise ValueError('key name not specified')
-            try:
-                l = self._key_locks[name]
-            except KeyError:
-                l = RLock()
-                self._key_locks[name] = l
-            with l:
-                keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
-                                                                         name)
-                keydir = self.path / keypath
-                keydir.mkdir(exist_ok=True, parents=True)
-                key_file = keydir / (keyn + self.suffix)
-                if self.write_modified_only:
-                    try:
-                        if self.get(name) == value:
-                            if debug:
-                                logger.debug(f'key {name} already has '
-                                             f'the same value set, skipping')
-                            return
-                    except KeyError:
-                        pass
-                if not _ignore_schema:
-                    self._validate_schema(key, value)
-                self._write(key_file,
-                            self._dump_value(value, stime=stime),
-                            flush=flush or self.auto_flush)
-                self.cache[key] = value
+            keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
+            keydir = self.path / keypath
+            keydir.mkdir(exist_ok=True, parents=True)
+            key_file = keydir / (keyn + self.suffix)
+            if self.write_modified_only:
+                try:
+                    if self.get(name) == value:
+                        if debug:
+                            logger.debug(f'key {name} already has '
+                                         f'the same value set, skipping')
+                        return
+                except KeyError:
+                    pass
+            if not _ignore_schema:
+                self._validate_schema(key, value)
+            self._write(key_file,
+                        self._dump_value(value, stime=stime),
+                        flush=flush or self.auto_flush)
+            self.cache[key] = value
 
     def copy(self, key, dst_key, delete=False):
         """
@@ -903,54 +827,40 @@ class YEDB():
             new_name = self._fmt_key(dst_key)
             if not new_name:
                 raise ValueError('key new_name not specified')
+            keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
+            keydir = self.path / keypath
+            key_file = keydir / (keyn + self.suffix)
+
+            keypath, keyn = new_name.rsplit(
+                '/', 1) if '/' in new_name else ('', new_name)
+            keydir = self.path / keypath
+            keydir.mkdir(exist_ok=True, parents=True)
+            dst_key_file = keydir / (keyn + self.suffix)
+
+            renamed = False
+
+            # rename key file
             try:
-                l = self._key_locks[name]
-            except KeyError:
-                l = RLock()
-                self._key_locks[name] = l
+                key_file.rename(dst_key_file)
+                renamed = True
+                if key in self.cache:
+                    self.cache[dst_key] = self.cache.pop(key)
+                if flush or self.auto_flush:
+                    self._sync_dirs({key_file.parent, dst_key_file.parent})
+            except FileNotFoundError:
+                pass
+
+            # rename dir if exists
+            d = key_file.with_suffix('')
+            dst_d = dst_key_file.with_suffix('')
             try:
-                l2 = self._key_locks[new_name]
-            except KeyError:
-                l2 = RLock()
-                self._key_locks[new_name] = l2
-            with l:
-                with l2:
-                    keypath, keyn = name.rsplit(
-                        '/', 1) if '/' in name else ('', name)
-                    keydir = self.path / keypath
-                    key_file = keydir / (keyn + self.suffix)
-
-                    keypath, keyn = new_name.rsplit(
-                        '/', 1) if '/' in new_name else ('', new_name)
-                    keydir = self.path / keypath
-                    keydir.mkdir(exist_ok=True, parents=True)
-                    dst_key_file = keydir / (keyn + self.suffix)
-
-                    renamed = False
-
-                    # rename key file
-                    try:
-                        key_file.rename(dst_key_file)
-                        renamed = True
-                        if key in self.cache:
-                            self.cache[dst_key] = self.cache.pop(key)
-                        if flush or self.auto_flush:
-                            self._sync_dirs(
-                                {key_file.parent, dst_key_file.parent})
-                    except FileNotFoundError:
-                        pass
-
-                    # rename dir if exists
-                    d = key_file.with_suffix('')
-                    dst_d = dst_key_file.with_suffix('')
-                    try:
-                        d.rename(dst_d)
-                        self._purge_cache_by_path(key.rsplit('/', 1)[0])
-                        if flush or self.auto_flush:
-                            self._sync_dirs({d.parent, dst_d.parent})
-                    except FileNotFoundError:
-                        if not renamed:
-                            raise KeyError(f'Key/category not found {key}')
+                d.rename(dst_d)
+                self._purge_cache_by_path(key.rsplit('/', 1)[0])
+                if flush or self.auto_flush:
+                    self._sync_dirs({d.parent, dst_d.parent})
+            except FileNotFoundError:
+                if not renamed:
+                    raise KeyError(f'Key/category not found {key}')
             # remove empty dirs if exist
             self.delete(key, _dir_only=True)
 
@@ -1023,53 +933,45 @@ class YEDB():
         with self.lock:
             if not self._opened:
                 raise RuntimeError('database is not opened')
-            try:
-                l = self._key_locks[name]
-            except KeyError:
-                l = RLock()
-                self._key_locks[name] = l
-            with l:
-                keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
-                                                                         name)
-                keydir = self.path / keypath
-                key_file = keydir / (keyn + self.suffix)
-                if _check_exists_only:
-                    return name in self.cache or key_file.exists()
-                else:
-                    try:
-                        checksum = None
-                        stime = None
+            keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
+            keydir = self.path / keypath
+            key_file = keydir / (keyn + self.suffix)
+            if _check_exists_only:
+                return name in self.cache or key_file.exists()
+            else:
+                try:
+                    checksum = None
+                    stime = None
+                    if debug:
+                        logger.debug(f'reading key {name} file {key_file}')
+                    if not _extended_info and name in self.cache:
                         if debug:
-                            logger.debug(f'reading key {name} file {key_file}')
-                        if not _extended_info and name in self.cache:
-                            if debug:
-                                logger.debug(f'found cached key {name}')
-                            try:
-                                value = self.cache[name]
-                            except TypeError:
-                                raise FileNotFoundError
-                        else:
-                            s = self.read(key_file)
-                            if self.checksums:
-                                if self.checksum_binary:
-                                    checksum = s[:32]
-                                    stime = s[32:40]
-                                else:
-                                    checksum, stime, _ = s.split(maxsplit=2)
-                                    checksum = bytes.fromhex(checksum)
-                                    stime = bytes.fromhex(stime)
-                                stime = int.from_bytes(stime, 'little')
-                            value = self._load_value(s)
-                            self.cache[name] = value
-                        return (value,
-                                key_file.stat() if _extended_info else None,
-                                checksum, stime,
-                                key_file if _extended_info else None)
-                    except FileNotFoundError:
-                        if default is KeyError:
-                            raise KeyError(f'Key not found: {name}')
-                        else:
-                            return (default, None)
+                            logger.debug(f'found cached key {name}')
+                        try:
+                            value = self.cache[name]
+                        except TypeError:
+                            raise FileNotFoundError
+                    else:
+                        s = self.read(key_file)
+                        if self.checksums:
+                            if self.checksum_binary:
+                                checksum = s[:32]
+                                stime = s[32:40]
+                            else:
+                                checksum, stime, _ = s.split(maxsplit=2)
+                                checksum = bytes.fromhex(checksum)
+                                stime = bytes.fromhex(stime)
+                            stime = int.from_bytes(stime, 'little')
+                        value = self._load_value(s)
+                        self.cache[name] = value
+                    return (value, key_file.stat() if _extended_info else None,
+                            checksum, stime,
+                            key_file if _extended_info else None)
+                except FileNotFoundError:
+                    if default is KeyError:
+                        raise KeyError(f'Key not found: {name}')
+                    else:
+                        return (default, None)
 
     def update_key(self, key, data):
         """
@@ -1092,27 +994,7 @@ class YEDB():
         Args:
             key: key name
         """
-        # TODO simplify key classes
-        # leave key locking only, move other functionality to get/set
-        with self.lock:
-            if not self._opened:
-                raise RuntimeError('database is not opened')
-            name = self._fmt_key(key)
-            if not name:
-                raise ValueError('key name not specified')
-            try:
-                l = self._key_locks[name]
-            except KeyError:
-                l = RLock()
-                self._key_locks[name] = l
-            keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
-            keydir = self.path / keypath
-            keydir.mkdir(exist_ok=True, parents=True)
-            key_file = keydir / (keyn + self.suffix)
-            return KeyDict(self, name, key_file, l)
-
-    def _key_dict_remote(self, key):
-        return KeyDictRemote(self, key)
+        return KeyDict(self, key)
 
     def key_list(self, key):
         """
@@ -1123,25 +1005,7 @@ class YEDB():
         Args:
             key: key name
         """
-        with self.lock:
-            if not self._opened:
-                raise RuntimeError('database is not opened')
-            name = self._fmt_key(key)
-            if not name:
-                raise ValueError('key name not specified')
-            try:
-                l = self._key_locks[name]
-            except KeyError:
-                l = RLock()
-                self._key_locks[name] = l
-            keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
-            keydir = self.path / keypath
-            keydir.mkdir(exist_ok=True, parents=True)
-            key_file = keydir / (keyn + self.suffix)
-            return KeyList(self, name, key_file, l)
-
-    def _key_list_remote(self, key):
-        return KeyListRemote(self, key)
+        return KeyList(self, key)
 
     def delete(self,
                key,
@@ -1165,54 +1029,43 @@ class YEDB():
         with self.lock:
             if not self._opened:
                 raise RuntimeError('database is not opened')
+            dn = self.path / name
+            if dn.is_dir() and recursive:
+                self._delete_subkeys(name, flush=False)
+                dts.add(dn.parent)
+            keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
+            keydir = self.path / keypath
+            key_file = keydir / (keyn + self.suffix)
+            if not _dir_only:
+                try:
+                    if (flush or self.auto_flush) and not _no_flush:
+                        with key_file.open('wb') as fh:
+                            fh.flush()
+                            os.fsync(fh.fileno())
+                    if debug:
+                        logger.debug(f'deleting key file {key_file}')
+                    key_file.unlink()
+                    if (flush or self.auto_flush) and not _no_flush:
+                        dts.add(key_file.parent)
+                except FileNotFoundError:
+                    pass
             try:
-                l = self._key_locks[name]
+                del self.cache[name]
             except KeyError:
-                l = RLock()
-                self._key_locks[name] = l
-            with l:
-                dn = self.path / name
-                if dn.is_dir() and recursive:
-                    self._delete_subkeys(name, flush=False)
-                    dts.add(dn.parent)
-                keypath, keyn = name.rsplit('/', 1) if '/' in name else ('',
-                                                                         name)
-                keydir = self.path / keypath
-                key_file = keydir / (keyn + self.suffix)
-                if not _dir_only:
-                    try:
-                        if (flush or self.auto_flush) and not _no_flush:
-                            with key_file.open('wb') as fh:
-                                fh.flush()
-                                os.fsync(fh.fileno())
-                        if debug:
-                            logger.debug(f'deleting key file {key_file}')
-                        key_file.unlink()
-                        if (flush or self.auto_flush) and not _no_flush:
-                            dts.add(key_file.parent)
-                    except FileNotFoundError:
-                        pass
+                pass
+            for p in [keydir] + list(keydir.parents):
+                if p == self.path:
+                    break
                 try:
-                    del self._key_locks[name]
-                except KeyError:
+                    p.rmdir()
+                    self._purge_cache_by_path(
+                        p.absolute().as_posix()[self._path_len:])
+                    if flush or self.auto_flush:
+                        dts.add(p.parent)
+                except OSError:
                     pass
-                try:
-                    del self.cache[name]
-                except KeyError:
-                    pass
-                for p in [keydir] + list(keydir.parents):
-                    if p == self.path:
-                        break
-                    try:
-                        p.rmdir()
-                        self._purge_cache_by_path(
-                            p.absolute().as_posix()[self._dbpath_len:])
-                        if flush or self.auto_flush:
-                            dts.add(p.parent)
-                    except OSError:
-                        pass
-                if (flush or self.auto_flush) and not _no_flush:
-                    self._sync_dirs(dts)
+            if (flush or self.auto_flush) and not _no_flush:
+                self._sync_dirs(dts)
 
     def clear(self, flush=False):
         """
@@ -1292,7 +1145,7 @@ class YEDB():
                     result = False
                 if flush or self.auto_flush:
                     dts.add(d.parent)
-                yield (str(d)[self._dbpath_len:-4], result)
+                yield (str(d)[self._path_len:-4], result)
             if flush or self.auto_flush:
                 self._sync_dirs(dts)
         # purge
@@ -1343,7 +1196,7 @@ class YEDB():
                     except:
                         if debug:
                             logger.debug(f'broken key file found: {d}')
-                        yield str(d)[self._dbpath_len:-self._suffix_len]
+                        yield str(d)[self._path_len:-self._suffix_len]
                         d.unlink()
                         if flush or self.auto_flush:
                             dts.add(d.parent)
@@ -1381,7 +1234,7 @@ class YEDB():
                     except:
                         if debug:
                             logger.debug(f'broken key file found: {d}')
-                        yield str(d)[self._dbpath_len:-self._suffix_len]
+                        yield str(d)[self._path_len:-self._suffix_len]
 
     def list_subkeys(self, key='', hidden=False):
         """
@@ -1401,8 +1254,7 @@ class YEDB():
                 raise RuntimeError('database is not opened')
             for f in self.path.glob(f'{name}/**/*{self.suffix}'
                                     if name else f'**/*{self.suffix}'):
-                name = f.absolute().as_posix()[self.
-                                               _dbpath_len:-self._suffix_len]
+                name = f.absolute().as_posix()[self._path_len:-self._suffix_len]
                 if hidden or not name.startswith('.'):
                     yield name
             if self.key_exists(key):
@@ -1420,13 +1272,8 @@ class YEDB():
             else:
                 path = self.path
             try:
-                # TODO: optimize locking deletion by mask
                 for k in reversed(sorted(self.list_subkeys(name, hidden=True))):
                     self.delete(k, _no_flush=True)
-                    try:
-                        del self._key_locks[k]
-                    except KeyError:
-                        pass
                 for d in path.iterdir():
                     if d.is_dir():
                         if debug:
@@ -1496,8 +1343,6 @@ class KeyDict:
     """
     Dictionary key object
 
-    Warning: thread-unsafe
-
     Should not be used directly, better usage:
 
     with db.key_dict('path.to.key') as key:
@@ -1509,22 +1354,16 @@ class KeyDict:
     closed)
     """
 
-    def __init__(self, db, key_name, key_file=None, lock=None):
-        self._lock = lock
-        self.key_name = key_name
-        self.key_file = key_file
+    def __init__(self, db, key):
+        self.key = key
+        self.db = db
         self.data = None
         self._changed = False
-        self.db = db
 
     def open(self):
-        if debug:
-            logger.debug(
-                f'loading key dict {self.key_name} from {self.key_file}')
-        self._lock.acquire()
         try:
-            self.data = self.db._load_value(self.db.read(self.key_file))
-        except FileNotFoundError:
+            self.data = self.db.get(key=self.key)
+        except KeyError:
             self.data = {}
 
     def __enter__(self):
@@ -1588,39 +1427,15 @@ class KeyDict:
 
     def close(self, _write=True):
         if _write and self._changed:
-            with self.db.lock:
-                if not self.db.write_modified_only or self.db.get(
-                        self.key_name, {}) != self.data:
-                    if debug:
-                        logger.debug(f'requesting to update {self.key_name}')
-                    self.db._validate_schema(self.key_name, self.data)
-                    self.db._write(self.key_file,
-                                   self.db._dump_value(self.data))
-                    self.db.cache[self.key_name] = self.data
-        self._lock.release()
+            self.db.set(key=self.key, value=self.data)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close(_write=exc_type is None)
 
 
-class KeyDictRemote(KeyDict):
-
-    def open(self):
-        if self.db.key_exists(key=self.key_name):
-            self.data = self.db.get(key=self.key_name)
-        else:
-            self.data = {}
-
-    def close(self, _write=True):
-        if _write and self._changed:
-            self.db.set(key=self.key_name, value=self.data)
-
-
 class KeyList:
     """
     List key object
-
-    Warning: thread-unsafe
 
     Should not be used directly, better usage:
 
@@ -1633,22 +1448,16 @@ class KeyList:
     closed)
     """
 
-    def __init__(self, db, key_name, key_file=None, lock=None):
-        self._lock = lock
-        self.key_name = key_name
-        self.key_file = key_file
+    def __init__(self, db, key):
+        self.key = key
+        self.db = db
         self.data = None
         self._changed = False
-        self.db = db
 
     def open(self):
-        if debug:
-            logger.debug(
-                f'loading key list {self.key_name} from {self.key_file}')
-        self._lock.acquire()
         try:
-            self.data = self.db._load_value(self.db.read(self.key_file))
-        except FileNotFoundError:
+            self.data = self.db.get(key=self.key)
+        except KeyError:
             self.data = []
 
     def __enter__(self):
@@ -1682,29 +1491,7 @@ class KeyList:
 
     def close(self, _write=True):
         if _write and self._changed:
-            with self.db.lock:
-                if not self.db.write_modified_only or self.db.get(
-                        self.key_name, {}) != self.data:
-                    if debug:
-                        logger.debug(f'requesting to update {self.key_name}')
-                    self.db._validate_schema(self.key_name, self.data)
-                    self.db._write(self.key_file,
-                                   self.db._dump_value(self.data))
-                    self.db.cache[self.key_name] = self.data
-        self._lock.release()
+            self.db.set(key=self.key, value=self.data)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close(_write=exc_type is None)
-
-
-class KeyListRemote(KeyList):
-
-    def open(self):
-        if self.db.key_exists(key=self.key_name):
-            self.data = self.db.get(key=self.key_name)
-        else:
-            self.data = []
-
-    def close(self, _write=True):
-        if _write and self._changed:
-            self.db.set(key=self.key_name, value=self.data)

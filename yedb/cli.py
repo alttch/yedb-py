@@ -189,7 +189,7 @@ def cli():
             db_ps = db_dir
             db_path = Path(db_dir)
     except:
-        print('Specify URL or dbpath[:fmt] and optional additional commands')
+        print('Specify URL or path[:fmt] and optional additional commands')
         print()
         db_path = None
         db_ps = None
