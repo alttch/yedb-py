@@ -726,6 +726,11 @@ class YEDB():
         try:
             if debug:
                 logger.debug(f'locking file {self.lock_file}')
+            if self.lock_file.exists():
+                self._flock = portalocker.Lock(self.lock_file.as_posix(),
+                                               mode='w')
+                self._flock.acquire(timeout=timeout)
+                self._flock.release()
             self._flock = portalocker.Lock(self.lock_file.as_posix(), mode='w')
             fh = self._flock.acquire(timeout=timeout)
             fh.write(str(os.getpid()))
@@ -741,11 +746,11 @@ class YEDB():
             if self._flock:
                 if debug:
                     logger.debug(f'removing lock file {self.lock_file}')
-                self._flock.release()
                 try:
                     (self.path / 'db.lock').unlink()
                 except FileNotFoundError:
                     pass
+                self._flock.release()
             self._opened = False
             self.cache.clear()
             if self.auto_flush:
