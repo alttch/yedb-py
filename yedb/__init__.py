@@ -1,4 +1,4 @@
-__version__ = '0.0.58'
+__version__ = '0.0.59'
 
 DB_VERSION = 1
 
@@ -917,8 +917,10 @@ class YEDB():
                 ln,
             'type':
                 tp,
-            'metadata':
-                result[1],
+            'mtime':
+                result[1].st_mtime_ns,
+            'size':
+                result[1].st_size,
             'sha256':
                 result[2],
             'stime':

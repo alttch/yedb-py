@@ -459,21 +459,18 @@ def cli():
                     'name': 'stime',
                     'value': stime
                 }, {
+                    'name': 'mtime',
+                    'value': fmt_time(key_info['mtime'], 'ns')
+                }, {
+                    'name': 'size',
+                    'value': fmt_size(key_info['size'])
+                }, {
                     'name': 'file',
                     'value': key_info['file']
                 }]
-                if 'metadata' in key_info:
-                    data.append(
-                        dict(name='mtime',
-                             value=fmt_time(key_info['metadata'].st_mtime)))
-                    data.append(
-                        dict(name='size',
-                             value=fmt_size(key_info['metadata'].st_size)))
-                else:
-                    data.append(
-                        dict(name='mtime', value=fmt_time(key_info['mtime'])))
-                    data.append(
-                        dict(name='size', value=fmt_size(key_info['size'])))
+                data.append(
+                    dict(name='mtime', value=fmt_time(key_info['mtime'], 'ns')))
+                data.append(dict(name='size', value=fmt_size(key_info['size'])))
 
                 pretty_print_table(sorted(data, key=lambda k: k['name']))
             elif cmd == 'edit':

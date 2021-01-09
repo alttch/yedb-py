@@ -1,4 +1,4 @@
-__version__ = '0.0.58'
+__version__ = '0.0.59'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
@@ -133,10 +133,6 @@ async def handle_jrpc(payload, remote_name):
             if isinstance(res, GeneratorType):
                 res = list(res)
             elif method == 'explain':
-                i = res['metadata']
-                del res['metadata']
-                res['mtime'] = i.st_mtime
-                res['size'] = i.st_size
                 res['sha256'] = res['sha256'].hex()
             elif method == 'info':
                 res['host'] = platform.node()
