@@ -1,4 +1,4 @@
-__version__ = '0.0.57'
+__version__ = '0.0.58'
 
 DB_VERSION = 1
 
@@ -732,7 +732,7 @@ class YEDB():
                 self._flock.acquire(timeout=timeout)
                 self._flock.release()
             self._flock = portalocker.Lock(self.lock_file.as_posix(), mode='w')
-            fh = self._flock.acquire(timeout=timeout)
+            fh = self._flock.acquire(timeout=0)
             fh.write(str(os.getpid()))
             fh.flush()
             os.fsync(fh.fileno())
@@ -917,7 +917,7 @@ class YEDB():
                 ln,
             'type':
                 tp,
-            'info':
+            'metadata':
                 result[1],
             'sha256':
                 result[2],

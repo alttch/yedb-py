@@ -462,13 +462,13 @@ def cli():
                     'name': 'file',
                     'value': key_info['file']
                 }]
-                if 'info' in key_info:
+                if 'metadata' in key_info:
                     data.append(
                         dict(name='mtime',
-                             value=fmt_time(key_info['info'].st_mtime)))
+                             value=fmt_time(key_info['metadata'].st_mtime)))
                     data.append(
                         dict(name='size',
-                             value=fmt_size(key_info['info'].st_size)))
+                             value=fmt_size(key_info['metadata'].st_size)))
                 else:
                     data.append(
                         dict(name='mtime', value=fmt_time(key_info['mtime'])))
