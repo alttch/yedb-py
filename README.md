@@ -233,7 +233,7 @@ For binary engine formats (msgpack, cbor, pickle):
 
 * line 1 - SHA256-checksum (hex)
 * line 2 - stime (key set time in nanoseconds) timestamp (hex)
-* line 3-N - key value, with leading LF at the end
+* line 3-N - key value, with LF ending
 
 If database checksums are not used, keys are stored in the chosen serialization
 format as-is. This can give benefits to easily manage / repair keys manually,
