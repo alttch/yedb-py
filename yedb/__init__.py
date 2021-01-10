@@ -162,30 +162,30 @@ class YEDB():
                 yedb_socket = _reopen_socket()
             if yedb_socket._closed:
                 yedb_socket = _reopen_socket()
-            try:
-                frame_len = 0
-                for i in range(2):
-                    try:
-                        yedb_socket.sendall(b'\x01\x02' +
-                                            len(data).to_bytes(4, 'little') +
-                                            data)
-                        frame = yedb_socket.recv(6)
-                        if not frame or frame[0] != 1 or frame[1] != 2:
-                            raise BrokenPipeError
-                        frame_len = int.from_bytes(frame[2:], 'little')
-                        if frame_len == 0:
-                            raise BrokenPipeError
-                        else:
-                            break
-                    except BrokenPipeError:
-                        yedb_socket = _reopen_socket()
-                response = b''
-                while len(response) < frame_len:
-                    response += yedb_socket.recv(SOCKET_BUF)
-                data = msgpack.loads(response, raw=False)
-            except:
+            frame_len = 0
+            exc = None
+            for i in range(3):
+                try:
+                    yedb_socket.sendall(b'\x01\x02' +
+                                        len(data).to_bytes(4, 'little') +
+                                        data)
+                    frame = yedb_socket.recv(6)
+                    if not frame or frame[0] != 1 or frame[1] != 2:
+                        raise BrokenPipeError
+                    frame_len = int.from_bytes(frame[2:], 'little')
+                    if frame_len == 0:
+                        raise BrokenPipeError
+                    response = b''
+                    while len(response) < frame_len:
+                        response += yedb_socket.recv(SOCKET_BUF)
+                    data = msgpack.loads(response, raw=False)
+                    break
+                except Exception as e:
+                    exc = e
+                    yedb_socket = _reopen_socket()
+            else:
                 yedb_socket.close()
-                raise
+                raise exc if exc else RuntimeError('Server error')
         else:
             try:
                 post = g.yedb_socket.post
