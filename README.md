@@ -226,7 +226,7 @@ By default, databases use checksums, so key files have the following formats.
 For binary engine formats (msgpack, cbor, pickle):
 
     * Byte 0-31 (32 bytes) - SHA256-checksum
-    * Byte 31-40 (8 bytes) - stime (key set time in nanoseconds) timestamp
+    * Byte 32-39 (8 bytes) - stime (key set time in nanoseconds) timestamp
     * Byte 40-N - key value
 
     For text engine formats (json, yaml):
