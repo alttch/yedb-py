@@ -163,6 +163,7 @@ class YEDB():
             if yedb_socket._closed:
                 yedb_socket = _reopen_socket()
             try:
+                frame_len = 0
                 for i in range(2):
                     try:
                         yedb_socket.sendall(b'\x01\x02' +
@@ -171,11 +172,13 @@ class YEDB():
                         frame = yedb_socket.recv(6)
                         if not frame or frame[0] != 1 or frame[1] != 2:
                             raise BrokenPipeError
+                        frame_len = int.from_bytes(frame[2:], 'little')
+                        if frame_len == 0:
+                            raise BrokenPipeError
                         else:
                             break
                     except BrokenPipeError:
                         yedb_socket = _reopen_socket()
-                frame_len = int.from_bytes(frame[2:], 'little')
                 response = b''
                 while len(response) < frame_len:
                     response += yedb_socket.recv(SOCKET_BUF)
