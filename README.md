@@ -213,7 +213,7 @@ Databases can be easily converted between formats using "yedb" CLI tool or
 "convert\_fmt" method, unless format-specific features are used (e.g. if keys
         have binary data, they can't be converted to JSON properly).
 
-## Specifications
+## YEDB Specifications and Data formats
 
 See https://github.com/alttch/yedb
 
