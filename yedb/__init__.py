@@ -1,4 +1,4 @@
-__version__ = '0.0.60'
+__version__ = '0.1.0'
 
 DB_VERSION = 1
 
