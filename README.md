@@ -113,7 +113,7 @@ with YEDB('/path/to/db', auto_repair=True) as db:
 # OR
 
 db = YEDB('/path/to/db')
-db.open(auto_repair=True)
+db.open()
 try:
     # do some stuff
 finally:
@@ -157,8 +157,8 @@ from yedb import YEDB
 with YEDB('tcp://localhost:8870') as db:
     with db.session() as session:
         # do some stuff, remember to send all parameters as kwargs
-        session.set(key='key1', value='val1')
-        print(session.get(key='key1'))
+        session.key_set(key='key1', value='val1')
+        print(session.key_get(key='key1'))
 ```
 
 ### Building own client
@@ -184,7 +184,7 @@ built-in server).
 from yedb import YEDB
 
 with YEDB('/path/to/db') as db:
-    with db.key('path/to/keydict) as key:
+    with db.key_as_dict('path/to/keydict) as key:
         key.set('field', 'value')
     # If modified, the key is automatically saved at the end of the statement.
 ```
@@ -281,7 +281,3 @@ After, lower the default logging level.
 ## Module documentation
 
 https://yedb.readthedocs.io/
-
-## TODO
-
-* Rust library
