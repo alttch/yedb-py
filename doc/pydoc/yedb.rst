@@ -13,7 +13,7 @@
    
    Should not be used directly, better usage:
    
-   with db.key_dict('path.to.key') as key:
+   with db.key_as_dict('path.to.key') as key:
        # do something
    
    Direct acccess to key dictionary is possible via obj.data. If any fields
@@ -56,7 +56,7 @@
    
    Should not be used directly, better usage:
    
-   with db.key_list('path.to.key') as key:
+   with db.key_as_list('path.to.key') as key:
        # do something
    
    Direct acccess to key list is possible via obj.data. If the data
@@ -152,12 +152,6 @@
       :returns: Generator object with broken keys found
       
    
-   .. py:method:: YEDB.clear(flush=False)
-      :module: yedb
-   
-      Clears database (removes everything)
-      
-   
    .. py:method:: YEDB.convert_fmt(new_fmt, checksums=True)
       :module: yedb
    
@@ -168,21 +162,6 @@
       
       :returns: Generator object with tuples (key, True|False) where True means a
                 key is converted and False means a key (old-format) is purged.
-      
-   
-   .. py:method:: YEDB.copy(key, dst_key, delete=False)
-      :module: yedb
-   
-      Copy key to new
-      
-   
-   .. py:method:: YEDB.delete(key, recursive=False, flush=False, _no_flush=False, _dir_only=False)
-      :module: yedb
-   
-      Deletes key
-      
-      :param key: key name
-      :param recursive: also delete subkeys
       
    
    .. py:method:: YEDB.do_repair()
@@ -197,50 +176,7 @@
                 may miss some keys or they may be broken.
       
    
-   .. py:method:: YEDB.dump_keys(key='')
-      :module: yedb
-   
-      Equal to get_subkeys(ignore_broken=True, hidden=False)
-      
-   
-   .. py:method:: YEDB.explain(key, full_value=False)
-      :module: yedb
-   
-      Get key value + extended info
-      
-      :param name: key name
-      :param full_value: obtain full key value
-      
-      :returns: dict(value, info=Path.stat, checksum=checksum, file=Path)
-      
-   
-   .. py:method:: YEDB.get(key, default=<class 'KeyError'>)
-      :module: yedb
-   
-      Get key value
-      
-      :param key: key name
-      :param default: default value, if the field is not present (if not
-                      specified, KeyError is raised)
-      
-   
-   .. py:method:: YEDB.get_subkeys(key='', ignore_broken=False, hidden=False)
-      :module: yedb
-   
-      Get subkeys of the specified key and their values (including the key
-      itself)
-      
-      :param key: key name, if not specified, all keys / values are returned
-      :param ignore_broken: do not raise errors on broken keys
-      
-      :returns: A generator object is returned, so the db becomes locked until all
-                values are yielded. To unlock the db earlier, convert the returned
-                generator into a list
-      
-                Generated values are returned as tuples (key_name, key_value)
-      
-   
-   .. py:method:: YEDB.key_dict(key)
+   .. py:method:: YEDB.key_as_dict(key)
       :module: yedb
    
       Returns KeyDict object
@@ -251,15 +187,7 @@
       :param key: key name
       
    
-   .. py:method:: YEDB.key_exists(key)
-      :module: yedb
-   
-      :returns: if key exists
-                False: if not
-      :rtype: True
-      
-   
-   .. py:method:: YEDB.key_list(key)
+   .. py:method:: YEDB.key_as_list(key)
       :module: yedb
    
       Returns KeyList object
@@ -269,7 +197,78 @@
       :param key: key name
       
    
-   .. py:method:: YEDB.list_subkeys(key='', hidden=False)
+   .. py:method:: YEDB.key_copy(key, dst_key)
+      :module: yedb
+   
+      Copy key to new
+      
+   
+   .. py:method:: YEDB.key_delete(key)
+      :module: yedb
+   
+      Deletes key
+      
+      :param key: key name
+      
+   
+   .. py:method:: YEDB.key_delete_recursive(key)
+      :module: yedb
+   
+      Deletes key and its subkeys
+      
+      :param key: key name
+      
+   
+   .. py:method:: YEDB.key_dump(key='')
+      :module: yedb
+   
+      Equal to get_subkeys(ignore_broken=True, hidden=False)
+      
+   
+   .. py:method:: YEDB.key_exists(key)
+      :module: yedb
+   
+      :returns: if key exists
+                False: if not
+      :rtype: True
+      
+   
+   .. py:method:: YEDB.key_explain(key)
+      :module: yedb
+   
+      Get key value + extended info
+      
+      :param name: key name
+      
+      :returns: dict(value, info=Path.stat, checksum=checksum, file=Path)
+      
+   
+   .. py:method:: YEDB.key_get(key, default=<class 'KeyError'>)
+      :module: yedb
+   
+      Get key value
+      
+      :param key: key name
+      :param default: default value, if the field is not present (if not
+                      specified, KeyError is raised)
+      
+   
+   .. py:method:: YEDB.key_get_recursive(key='', _ignore_broken=False)
+      :module: yedb
+   
+      Get subkeys of the specified key and their values (including the key
+      itself)
+      
+      :param key: key name, if not specified, all keys / values are returned
+      
+      :returns: A generator object is returned, so the db becomes locked until all
+                values are yielded. To unlock the db earlier, convert the returned
+                generator into a list
+      
+                Generated values are returned as tuples (key_name, key_value)
+      
+   
+   .. py:method:: YEDB.key_list(key='')
       :module: yedb
    
       List subkeys of the specified key (including the key itself)
@@ -281,13 +280,46 @@
                 generator into a list
       
    
-   .. py:method:: YEDB.load_keys(data, use_schema=False)
+   .. py:method:: YEDB.key_list_all(key='')
+      :module: yedb
+   
+      List subkeys of the specified key (including the key itself), including
+      hidden
+      
+   
+   .. py:method:: YEDB.key_load(data)
       :module: yedb
    
       Loads keys
       
+      Schema validations are ignored
+      
       :param data: list or generator of key/value pairs (lists or tuples)
-      :param use_schema: use schema validation (default: False)
+      
+   
+   .. py:method:: YEDB.key_rename(key, dst_key)
+      :module: yedb
+   
+      Rename key or category to new
+      
+   
+   .. py:method:: YEDB.key_set(key, value, _stime=None, _ignore_schema=False)
+      :module: yedb
+   
+      Set key to value
+      
+      The key file is always overriden
+      
+      :param key: key name
+      :param value: key value
+      
+   
+   .. py:method:: YEDB.key_update(key, data)
+      :module: yedb
+   
+      Updates dict key with values in data
+      
+      :param data: dict
       
    
    .. py:method:: YEDB.open(auto_create=True, auto_repair=False, _skip_lock=False, _force_lock_ex=False, _skip_meta=False, **kwargs)
@@ -305,7 +337,7 @@
       :raises RuntimeError: database / meta info errors
       
    
-   .. py:method:: YEDB.purge(keep_broken=False, flush=False)
+   .. py:method:: YEDB.purge(_keep_broken=False)
       :module: yedb
    
       Purges empty directories
@@ -319,18 +351,10 @@
       
       The command also clears memory cache.
       
-      :param keep_broken: keys are not tested, broken keys are not removed
-      
       :returns: Generator object with broken keys found and removed
       
    
-   .. py:method:: YEDB.rename(key, dst_key, flush=False)
-      :module: yedb
-   
-      Rename key or category to new
-      
-   
-   .. py:method:: YEDB.repair(purge_after=True, flush=False)
+   .. py:method:: YEDB.repair()
       :module: yedb
    
       Repairs database
@@ -338,34 +362,18 @@
       Finds temp key files and tries to repair them if they are valid.
       Requires checksums enabled
       
-      :param purge_after: call purge after (default) - clean up and delete
-                          broken keys and empty key directories
-      
       :returns: Generator object with tuples (key, True|False) where True means a
                 key is repaired and False means a key is purged.
+      
+   
+   .. py:method:: YEDB.safe_purge()
+      :module: yedb
+   
+      Same as purge, but keeps broken keys
       
    
    .. py:method:: YEDB.session()
       :module: yedb
    
       Get session object
-      
-   
-   .. py:method:: YEDB.set(key, value, flush=False, stime=None, _ignore_schema=False)
-      :module: yedb
-   
-      Set key to value
-      
-      The key file is always overriden
-      
-      :param key: key name
-      :param value: key value
-      
-   
-   .. py:method:: YEDB.update_key(key, data)
-      :module: yedb
-   
-      Updates dict key with values in data
-      
-      :param data: dict
       
