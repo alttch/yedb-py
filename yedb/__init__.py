@@ -1193,7 +1193,7 @@ class YEDB():
                         if self.auto_flush:
                             dts.add(d.parent)
             # clean up directories
-            for d in reversed(list((self.path.glob('**')))):
+            for d in reversed(sorted((self.path.glob('**')))):
                 if d.is_dir():
                     try:
                         d.rmdir()
