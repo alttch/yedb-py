@@ -2,14 +2,14 @@ def _bm_set_key(db, n, x, iters, threads, v):
     with db.session() as s:
         for z in range(x * int(iters / threads),
                        (x + 1) * int(iters / threads)):
-            s.set(key=f'.benchmark/{n}/key{z}', value=v)
+            s.key_set(key=f'.benchmark/{n}/key{z}', value=v)
 
 
 def _bm_get_key(db, n, x, iters, threads):
     with db.session() as s:
         for z in range(x * int(iters / threads),
                        (x + 1) * int(iters / threads)):
-            s.get(key=f'.benchmark/{n}/key{z}')
+            s.key_get(key=f'.benchmark/{n}/key{z}')
 
 
 def cli():
@@ -156,7 +156,6 @@ def cli():
                 'check',
                 'repair',
                 'purge',
-                'clear',
                 'convert',
         ]:
             sys.argv[1] = '-h'
@@ -208,13 +207,13 @@ def cli():
     class KeyCompleter:
 
         def __call__(self, prefix, **kwargs):
-            for k in db.list_subkeys(hidden=True):
+            for k in db.key_list_all():
                 yield k
 
     class KeyGroupCompleter:
 
         def __call__(self, prefix, **kwargs):
-            for k in db.list_subkeys(hidden=True):
+            for k in db.key_list_all():
                 if '/' in k:
                     c = k.split('/')
                     for i in range(len(c) + 1):
@@ -272,12 +271,10 @@ def cli():
         try:
             if cmd == 'get':
                 key = kwargs.get('KEY')
+                key_info = {}
                 if kwargs.get('recursive'):
                     data = []
-                    for k, v in db.get_subkeys(
-                            key=key,
-                            ignore_broken=kwargs.get('ignore_broken'),
-                            hidden=kwargs.get('all')):
+                    for k, v in db.key_get_recursive(key=key):
                         tp = type_name(v)
                         if isinstance(v, dict) or isinstance(v, list):
                             import json
@@ -292,7 +289,7 @@ def cli():
                     as_raw = kwargs.get('raw')
                     if ':' in key:
                         name, field = key.rsplit(':', 1)
-                        with db.key_dict(key=name) as kd:
+                        with db.key_as_dict(key=name) as kd:
                             try:
                                 value = kd.get(field)
                             except KeyError:
@@ -302,17 +299,17 @@ def cli():
                     else:
                         try:
                             if as_raw:
-                                pretty_print(db.get(key=key), raw=True)
+                                pretty_print(db.key_get(key=key), raw=True)
                                 return
                             else:
-                                key_info = db.explain(key=key, full_value=True)
+                                key_info = db.key_explain(key=key)
+                                value = key_info['value']
                         except KeyError:
                             print_err(f'Key not found: {key}')
                             return
-                    value = key_info['value']
                     if key_info.get('schema'):
                         try:
-                            schema = db.get(key=key_info['schema'])
+                            schema = db.key_get(key=key_info['schema'])
                         except KeyError:
                             schema = None
                     else:
@@ -340,7 +337,7 @@ def cli():
                     c = 0
                     fd.write(b'\x01\x02')
                     try:
-                        for v in db.dump_keys(key=key):
+                        for v in db.key_dump(key=key):
                             data = msgpack.dumps(v)
                             fd.write(len(data).to_bytes(4, 'little') + data)
                             c += 1
@@ -373,10 +370,10 @@ def cli():
                             buf.append(data)
                             c += 1
                             if sys.getsizeof(buf) > 32768:
-                                db.load_keys(data=buf)
+                                db.key_load(data=buf)
                                 buf.clear()
                         if buf:
-                            db.load_keys(data=buf)
+                            db.key_load(data=buf)
                     finally:
                         if f:
                             f.close()
@@ -411,15 +408,15 @@ def cli():
                         if f:
                             f.close()
             elif cmd == 'copy':
-                db.copy(key=kwargs.get('KEY'),
-                        dst_key=kwargs.get('DST_KEY'),
-                        delete=kwargs.get('delete'))
+                db.key_copy(key=kwargs.get('KEY'),
+                            dst_key=kwargs.get('DST_KEY'))
             elif cmd == 'rename':
-                db.rename(key=kwargs.get('KEY'), dst_key=kwargs.get('DST_KEY'))
+                db.key_rename(key=kwargs.get('KEY'),
+                              dst_key=kwargs.get('DST_KEY'))
             elif cmd == 'explain':
                 key = kwargs.get('KEY')
                 try:
-                    key_info = db.explain(key=key)
+                    key_info = db.key_explain(key=key)
                 except KeyError:
                     print_err(f'Key not found: {key}')
                     return
@@ -430,8 +427,6 @@ def cli():
                 checksum = key_info['sha256']
                 if checksum is None:
                     checksum = '-'
-                elif isinstance(checksum, bytes):
-                    checksum = checksum.hex()
                 stime = key_info['stime']
                 if stime is None:
                     stime = '-'
@@ -478,14 +473,14 @@ def cli():
                 import tempfile
                 key = kwargs.get('KEY')
                 try:
-                    key_info = db.explain(key=key, full_value=True)
+                    key_info = db.key_explain(key=key)
                     value = key_info['value']
                 except KeyError:
                     value = ''
                     key_info = {}
                 if key_info.get('schema'):
                     try:
-                        schema = db.get(key=key_info['schema'])
+                        schema = db.key_get(key=key_info['schema'])
                     except KeyError:
                         schema = None
                 else:
@@ -523,7 +518,7 @@ def cli():
                             break
                         else:
                             try:
-                                db.set(key=key, value=data)
+                                db.key_set(key=key, value=data)
                                 break
                             except:
                                 print_tb(force=True, delay=True)
@@ -546,22 +541,26 @@ def cli():
                 key = kwargs.get('KEY')
                 if ':' in key:
                     name, field = key.rsplit(':', 1)
-                    with db.key_dict(key=name) as kd:
+                    with db.key_as_dict(key=name) as kd:
                         kd.set(field, value)
                 else:
-                    db.set(key=kwargs.get('KEY'), value=value)
+                    db.key_set(key=kwargs.get('KEY'), value=value)
             elif cmd == 'delete':
                 key = kwargs.get('KEY')
                 if ':' in key:
                     name, field = key.rsplit(':', 1)
-                    with db.key_dict(key=name) as kd:
+                    with db.key_as_dict(key=name) as kd:
                         kd.delete(field)
                 else:
-                    db.delete(key=key, recursive=kwargs.get('recursive'))
+                    if kwargs.get('recursive'):
+                        db.key_delete_recursive(key=key)
+                    else:
+                        db.key_delete(key=key)
             elif cmd == 'ls':
                 key = kwargs.get('KEY')
                 data = []
-                for k in db.list_subkeys(key=key, hidden=kwargs.get('all')):
+                for k in db.key_list_all(
+                        key=key) if kwargs.get('all') else db.key_list(key=key):
                     data.append(dict(key=k))
                 pretty_print_table(sorted(data, key=lambda k: k['key']))
             elif cmd == 'check':
@@ -607,8 +606,7 @@ def cli():
                                   color="green" if checksums else "grey"))
                     from tqdm import tqdm
                     try:
-                        pbar = tqdm(total=len(list(db.list_subkeys(
-                            hidden=True))))
+                        pbar = tqdm(total=len(list(db.key_list_all())))
                         db.close()
                         for key in db.convert_fmt(new_fmt, checksums=checksums):
                             pbar.update(1)
@@ -617,7 +615,7 @@ def cli():
                     except:
                         pbar.close()
                         db.open()
-                        db.purge(keep_broken=True)
+                        db.safe_purge()
                         raise
                     finally:
                         print('Checking...')
@@ -649,7 +647,7 @@ def cli():
                 pretty_print_table(sorted(data, key=lambda k: k['name']))
             elif cmd == 'benchmark':
 
-                db.delete(key='.benchmark', recursive=True)
+                db.key_delete_recursive(key='.benchmark')
                 iters = 1000
                 threads = kwargs.get('threads', 4)
                 print(f'Benchmarking. Threads: {threads}')
@@ -701,15 +699,7 @@ def cli():
                                         color='yellow')))
                     print()
                 print('cleaning up...')
-                db.delete(key='.benchmark', recursive=True)
-            elif cmd == 'clear':
-                if remote:
-                    db._not_implemented()
-                if not kwargs.get('YES'):
-                    print_warn('repeat the command with --YES '
-                               'param to DELETE ALL database keys')
-                else:
-                    db.clear()
+                db.key_delete_recursive(key='.benchmark')
         except Exception as e:
             print_err(e)
             print_tb()
@@ -723,15 +713,10 @@ def cli():
     ap_get.add_argument('KEY', help='Key name or <key>:<field> for dict keys'
                        ).completer = KeyGroupCompleter()
     ap_get.add_argument('-r', '--recursive', action='store_true')
-    ap_get.add_argument('-a',
-                        '--all',
-                        action='store_true',
-                        help='Include hidden')
     ap_get.add_argument('-y',
                         '--full',
                         action='store_true',
                         help='Full value output when recursive')
-    ap_get.add_argument('--ignore-broken', action='store_true')
     ap_get.add_argument('-R',
                         '--raw',
                         help='Output raw value',
@@ -760,10 +745,6 @@ def cli():
     ap_copy = sp.add_parser('copy', help='Copy key')
     ap_copy.add_argument('KEY').completer = KeyCompleter()
     ap_copy.add_argument('DST_KEY').completer = KeyCompleter()
-    ap_copy.add_argument('-d',
-                         '--delete',
-                         action='store_true',
-                         help='Delete old key')
 
     ap_rename = sp.add_parser('rename', help='Rename key')
     ap_rename.add_argument('KEY').completer = KeyCompleter()
@@ -815,9 +796,6 @@ def cli():
         ap_reopen.add_argument('-f', '--auto-flush', action='store_true')
 
     ap_purge = sp.add_parser('purge', help='Purge database')
-
-    ap_clear = sp.add_parser('clear', help='Clear database')
-    ap_clear.add_argument('--YES', action='store_true')
 
     ap_convert = sp.add_parser('convert', help='Convert database format')
     ap_convert.add_argument(

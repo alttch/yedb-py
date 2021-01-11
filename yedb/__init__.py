@@ -167,8 +167,7 @@ class YEDB():
             for i in range(3):
                 try:
                     yedb_socket.sendall(b'\x01\x02' +
-                                        len(data).to_bytes(4, 'little') +
-                                        data)
+                                        len(data).to_bytes(4, 'little') + data)
                     frame = yedb_socket.recv(6)
                     if not frame or frame[0] != 1 or frame[1] != 2:
                         raise BrokenPipeError
@@ -325,7 +324,7 @@ class YEDB():
                     elif f == 'close':
                         setattr(self, f, self._close_remote)
                     elif not f.startswith('_') and f not in [
-                            'session', 'key_dict', 'key_list'
+                            'session', 'key_as_dict', 'key_as_list'
                     ]:
                         if f in METHODS:
                             setattr(self, f, partial(self._remote_call, f))
@@ -353,7 +352,7 @@ class YEDB():
     def _find_schema(self, key):
         if key.startswith('.schema/') or key == '.schema':
             try:
-                schema = self.get(key)
+                schema = self.key_get(key)
                 if schema == {'type': 'code.python'}:
                     return '<Python code>', 'https://www.python.org/'
             except KeyError:
@@ -362,7 +361,7 @@ class YEDB():
         while True:
             try:
                 schema_key = f'.schema/{key}' if key else '.schema'
-                return self.get(schema_key), schema_key
+                return self.key_get(schema_key), schema_key
             except KeyError:
                 pass
             if key == '':
@@ -479,20 +478,20 @@ class YEDB():
             self.suffix += 'c'
         self._suffix_len = len(self.suffix)
 
-    def _write(self, f, data, flush=False):
+    def _write(self, f, data):
         if debug:
             logger.debug(f'updating key file {f}')
         orig_file = f
         f = f.with_suffix('.tmp')
         with f.open(self.write_mode) as fh:
             fh.write(data)
-            if flush or self.auto_flush:
+            if self.auto_flush:
                 if debug:
                     logger.debug(f'flushing key file {f}')
                 fh.flush()
                 os.fsync(fh.fileno())
             f.rename(orig_file)
-            if flush or self.auto_flush:
+            if self.auto_flush:
                 self._sync_dirs([f.parent])
 
     @staticmethod
@@ -614,12 +613,12 @@ class YEDB():
                             checksums is None else False
                     new_db._init_meta()
                     new_db.meta_info['created'] = self.meta_info['created']
-                    for key in self.list_subkeys(hidden=True):
+                    for key in self._list_subkeys(hidden=True):
                         val = self._get(key, _extended_info=True)
-                        new_db.set(key, val[0], stime=val[3])
+                        new_db.key_set(key, val[0], _stime=val[3])
                         yield (key, True)
                     new_db._write_meta()
-                    for k in new_db.purge(keep_broken=True):
+                    for k in new_db.safe_purge():
                         yield (key, False)
                 self.fmt = new_fmt
             finally:
@@ -635,13 +634,13 @@ class YEDB():
             'checksums': self.checksums
         }
 
-    def _write_meta(self, flush=False):
+    def _write_meta(self):
         if debug:
             logger.debug(f'writing meta info file {self.meta_file}')
         import json
         with self.meta_file.open('w') as fh:
             fh.write(json.dumps(self.meta_info))
-            if flush or self.auto_flush:
+            if self.auto_flush:
                 fh.flush()
                 os.fsync(fh.fileno())
 
@@ -770,7 +769,7 @@ class YEDB():
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def set(self, key, value, flush=False, stime=None, _ignore_schema=False):
+    def key_set(self, key, value, _stime=None, _ignore_schema=False):
         """
         Set key to value
 
@@ -794,7 +793,8 @@ class YEDB():
             key_file = keydir / (keyn + self.suffix)
             if self.write_modified_only:
                 try:
-                    if self.get(name) == value:
+                    v = self.key_get(name)
+                    if v == value and v.__class__ is value.__class__:
                         if debug:
                             logger.debug(f'key {name} already has '
                                          f'the same value set, skipping')
@@ -803,24 +803,20 @@ class YEDB():
                     pass
             if not _ignore_schema:
                 self._validate_schema(key, value)
-            self._write(key_file,
-                        self._dump_value(value, stime=stime),
-                        flush=flush or self.auto_flush)
+            self._write(key_file, self._dump_value(value, stime=_stime))
             self.cache[key] = value
 
-    def copy(self, key, dst_key, delete=False):
+    def key_copy(self, key, dst_key):
         """
         Copy key to new
         """
         if debug:
-            logger.debug(f'copying key {key} to {dst_key}, delete: {delete}')
+            logger.debug(f'copying key {key} to {dst_key}')
         with self.lock:
-            value = self.get(key)
-            self.set(dst_key, value)
-            if delete:
-                self.delete(key)
+            value = self.key_get(key)
+            self.key_set(dst_key, value)
 
-    def rename(self, key, dst_key, flush=False):
+    def key_rename(self, key, dst_key):
         """
         Rename key or category to new
         """
@@ -853,7 +849,7 @@ class YEDB():
                 renamed = True
                 if key in self.cache:
                     self.cache[dst_key] = self.cache.pop(key)
-                if flush or self.auto_flush:
+                if self.auto_flush:
                     self._sync_dirs({key_file.parent, dst_key_file.parent})
             except FileNotFoundError:
                 pass
@@ -864,13 +860,13 @@ class YEDB():
             try:
                 d.rename(dst_d)
                 self._purge_cache_by_path(key.rsplit('/', 1)[0])
-                if flush or self.auto_flush:
+                if self.auto_flush:
                     self._sync_dirs({d.parent, dst_d.parent})
             except FileNotFoundError:
                 if not renamed:
                     raise KeyError(f'Key/category not found {key}')
             # remove empty dirs if exist
-            self.delete(key, _dir_only=True)
+            self._delete(key, _dir_only=True)
 
     def key_exists(self, key):
         """
@@ -880,7 +876,7 @@ class YEDB():
         """
         return self._get(key, _check_exists_only=True) if key else False
 
-    def get(self, key, default=KeyError):
+    def key_get(self, key, default=KeyError):
         """
         Get key value
 
@@ -891,13 +887,12 @@ class YEDB():
         """
         return self._get(key, default)[0]
 
-    def explain(self, key, full_value=False):
+    def key_explain(self, key):
         """
         Get key value + extended info
 
         Args:
             name: key name
-            full_value: obtain full key value
 
         Returns:
             dict(value, info=Path.stat, checksum=checksum, file=Path)
@@ -912,24 +907,15 @@ class YEDB():
         except:
             ln = None
         return {
-            'value':
-                result[0] if full_value else _format_debug_value(result[0]),
-            'schema':
-                self._find_schema(key)[1],
-            'len':
-                ln,
-            'type':
-                tp,
-            'mtime':
-                result[1].st_mtime_ns,
-            'size':
-                result[1].st_size,
-            'sha256':
-                result[2],
-            'stime':
-                result[3],
-            'file':
-                result[4].absolute(),
+            'value': result[0],
+            'schema': self._find_schema(key)[1],
+            'len': ln,
+            'type': tp,
+            'mtime': result[1].st_mtime_ns,
+            'size': result[1].st_size,
+            'sha256': result[2],
+            'stime': result[3],
+            'file': result[4].absolute(),
         }
 
     def _get(self,
@@ -983,18 +969,18 @@ class YEDB():
                     else:
                         return (default, None)
 
-    def update_key(self, key, data):
+    def key_update(self, key, data):
         """
         Updates dict key with values in data
 
         Args:
             data: dict
         """
-        with self.key_dict(key=key) as k:
+        with self.key_as_dict(key=key) as k:
             k.data.update(data)
             k.set_modified()
 
-    def key_dict(self, key):
+    def key_as_dict(self, key):
         """
         Returns KeyDict object
 
@@ -1006,7 +992,7 @@ class YEDB():
         """
         return KeyDict(self, key)
 
-    def key_list(self, key):
+    def key_as_list(self, key):
         """
         Returns KeyList object
 
@@ -1017,19 +1003,25 @@ class YEDB():
         """
         return KeyList(self, key)
 
-    def delete(self,
-               key,
-               recursive=False,
-               flush=False,
-               _no_flush=False,
-               _dir_only=False):
+    def key_delete(self, key):
         """
         Deletes key
 
         Args:
             key: key name
-            recursive: also delete subkeys
         """
+        return self._delete(key)
+
+    def key_delete_recursive(self, key):
+        """
+        Deletes key and its subkeys
+
+        Args:
+            key: key name
+        """
+        return self._delete(key, recursive=True)
+
+    def _delete(self, key, recursive=False, _no_flush=False, _dir_only=False):
         name = self._fmt_key(key)
         if name == '' and not recursive:
             return
@@ -1041,21 +1033,21 @@ class YEDB():
                 raise RuntimeError('database is not opened')
             dn = self.path / name
             if dn.is_dir() and recursive:
-                self._delete_subkeys(name, flush=False)
+                self._delete_subkeys(name, _no_flush=True)
                 dts.add(dn.parent)
             keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
             keydir = self.path / keypath
             key_file = keydir / (keyn + self.suffix)
             if not _dir_only:
                 try:
-                    if (flush or self.auto_flush) and not _no_flush:
+                    if (self.auto_flush) and not _no_flush:
                         with key_file.open('wb') as fh:
                             fh.flush()
                             os.fsync(fh.fileno())
                     if debug:
                         logger.debug(f'deleting key file {key_file}')
                     key_file.unlink()
-                    if (flush or self.auto_flush) and not _no_flush:
+                    if self.auto_flush and not _no_flush:
                         dts.add(key_file.parent)
                 except FileNotFoundError:
                     pass
@@ -1070,20 +1062,12 @@ class YEDB():
                     p.rmdir()
                     self._purge_cache_by_path(
                         p.absolute().as_posix()[self._path_len:])
-                    if flush or self.auto_flush:
+                    if self.auto_flush and not _no_flush:
                         dts.add(p.parent)
                 except OSError:
                     pass
-            if (flush or self.auto_flush) and not _no_flush:
+            if self.auto_flush and not _no_flush:
                 self._sync_dirs(dts)
-
-    def clear(self, flush=False):
-        """
-        Clears database (removes everything)
-        """
-        if debug:
-            logger.debug(f'CLEAR operation requested')
-        self._delete_subkeys(flush=flush or self.auto_flush)
 
     def do_repair(self):
         """
@@ -1114,16 +1098,12 @@ class YEDB():
             logger.error(e)
             return False
 
-    def repair(self, purge_after=True, flush=False):
+    def repair(self):
         """
         Repairs database
 
         Finds temp key files and tries to repair them if they are valid.
         Requires checksums enabled 
-
-        Args:
-            purge_after: call purge after (default) - clean up and delete
-                        broken keys and empty key directories
 
         Returns:
             Generator object with tuples (key, True|False) where True means a
@@ -1153,18 +1133,23 @@ class YEDB():
                         logger.debug(f'broken key file found: {d}')
                     d.unlink()
                     result = False
-                if flush or self.auto_flush:
+                if self.auto_flush:
                     dts.add(d.parent)
                 yield (str(d)[self._path_len:-4], result)
-            if flush or self.auto_flush:
+            if self.auto_flush:
                 self._sync_dirs(dts)
         # purge
-        if purge_after:
-            for key in self.purge():
-                yield (key, False)
+        for key in self.purge():
+            yield (key, False)
         self.repair_recommended = False
 
-    def purge(self, keep_broken=False, flush=False):
+    def safe_purge(self):
+        """
+        Same as purge, but keeps broken keys
+        """
+        return self.purge(_keep_broken=True)
+
+    def purge(self, _keep_broken=False):
         """
         Purges empty directories
 
@@ -1177,15 +1162,12 @@ class YEDB():
 
         The command also clears memory cache.
 
-        Args:
-            keep_broken: keys are not tested, broken keys are not removed
-
         Returns:
             Generator object with broken keys found and removed
         """
         if debug:
             logger.debug(
-                f'purge operation requested, keep_broken: {keep_broken}')
+                f'purge operation requested, keep_broken: {_keep_broken}')
         dts = set()
         with self.lock:
             self.cache.clear()
@@ -1198,9 +1180,9 @@ class YEDB():
                     if debug:
                         logger.debug(f'deleting non-necessary file {d}')
                     d.unlink()
-                    if flush or self.auto_flush:
+                    if self.auto_flush:
                         dts.add(d.parent)
-                elif d.suffix == self.suffix and not keep_broken:
+                elif d.suffix == self.suffix and not _keep_broken:
                     try:
                         self._load_value(self.read(d))
                     except:
@@ -1208,18 +1190,18 @@ class YEDB():
                             logger.debug(f'broken key file found: {d}')
                         yield str(d)[self._path_len:-self._suffix_len]
                         d.unlink()
-                        if flush or self.auto_flush:
+                        if self.auto_flush:
                             dts.add(d.parent)
             # clean up directories
             for d in reversed(list((self.path.glob('**')))):
                 if d.is_dir():
                     try:
                         d.rmdir()
-                        if flush or self.auto_flush:
+                        if self.auto_flush:
                             dts.add(d.parent)
                     except OSError:
                         pass
-            if flush or self.auto_flush:
+            if self.auto_flush:
                 self._sync_dirs(dts)
 
     def check(self):
@@ -1246,7 +1228,7 @@ class YEDB():
                             logger.debug(f'broken key file found: {d}')
                         yield str(d)[self._path_len:-self._suffix_len]
 
-    def list_subkeys(self, key='', hidden=False):
+    def key_list(self, key=''):
         """
         List subkeys of the specified key (including the key itself)
 
@@ -1258,6 +1240,16 @@ class YEDB():
             values are yielded. To unlock the db earlier, convert the returned
             generator into a list
         """
+        return self._list_subkeys(key=key)
+
+    def key_list_all(self, key=''):
+        """
+        List subkeys of the specified key (including the key itself), including
+        hidden
+        """
+        return self._list_subkeys(key=key, hidden=True)
+
+    def _list_subkeys(self, key='', hidden=False):
         name = self._fmt_key(key)
         with self.lock:
             if not self._opened:
@@ -1270,7 +1262,7 @@ class YEDB():
             if self.key_exists(key):
                 yield key
 
-    def _delete_subkeys(self, name='', flush=False):
+    def _delete_subkeys(self, name='', _no_flush=False):
         name = self._fmt_key(name)
         import shutil
         dts = set()
@@ -1282,36 +1274,36 @@ class YEDB():
             else:
                 path = self.path
             try:
-                for k in reversed(sorted(self.list_subkeys(name, hidden=True))):
-                    self.delete(k, _no_flush=True)
+                for k in reversed(sorted(self._list_subkeys(name,
+                                                            hidden=True))):
+                    self._delete(k, _no_flush=True)
                 for d in path.iterdir():
                     if d.is_dir():
                         if debug:
                             logger.debug(f'deleting directory {d}')
                         shutil.rmtree(d)
-                        if flush:
+                        if self.auto_flush and not _no_flush:
                             dts.add(d.parent)
                     else:
                         if d.absolute() not in [self.lock_file, self.meta_file]:
                             if debug:
                                 logger.debug(f'deleting file {d}')
                             d.unlink()
-                            if flush:
+                            if self.auto_flush and not _no_flush:
                                 dts.add(d.parent)
-                if flush or self.auto_flush:
+                if self.auto_flush and not _no_flush:
                     self._sync_dirs(dts)
             except FileNotFoundError:
                 pass
             self._purge_cache_by_path(name)
 
-    def get_subkeys(self, key='', ignore_broken=False, hidden=False):
+    def key_get_recursive(self, key='', _ignore_broken=False):
         """
         Get subkeys of the specified key and their values (including the key
         itself)
 
         Args:
             key: key name, if not specified, all keys / values are returned
-            ignore_broken: do not raise errors on broken keys
 
         Returns:
             A generator object is returned, so the db becomes locked until all
@@ -1323,30 +1315,31 @@ class YEDB():
         if not self._opened:
             raise RuntimeError('database is not opened')
         name = self._fmt_key(key)
-        for key in self.list_subkeys(name, hidden=hidden):
+        for key in self._list_subkeys(name, hidden=True):
             try:
-                yield key, self.get(key)
+                yield key, self.key_get(key)
             except:
-                if not ignore_broken:
+                if not _ignore_broken:
                     raise
 
-    def dump_keys(self, key=''):
+    def key_dump(self, key=''):
         """
         Equal to get_subkeys(ignore_broken=True, hidden=False)
         """
-        return self.get_subkeys(key=key, ignore_broken=True, hidden=True)
+        return self.key_get_recursive(key=key, _ignore_broken=True)
 
-    def load_keys(self, data, use_schema=False):
+    def key_load(self, data):
         """
         Loads keys
 
+        Schema validations are ignored
+
         Args:
             data: list or generator of key/value pairs (lists or tuples)
-            use_schema: use schema validation (default: False)
         """
         with self.lock:
             for d in data:
-                self.set(key=d[0], value=d[1], _ignore_schema=not use_schema)
+                self.key_set(key=d[0], value=d[1], _ignore_schema=True)
 
 
 class KeyDict:
@@ -1355,7 +1348,7 @@ class KeyDict:
 
     Should not be used directly, better usage:
 
-    with db.key_dict('path.to.key') as key:
+    with db.key_as_dict('path.to.key') as key:
         # do something
 
     Direct acccess to key dictionary is possible via obj.data. If any fields
@@ -1372,7 +1365,7 @@ class KeyDict:
 
     def open(self):
         try:
-            self.data = self.db.get(key=self.key)
+            self.data = self.db.key_get(key=self.key)
         except KeyError:
             self.data = {}
 
@@ -1382,7 +1375,7 @@ class KeyDict:
 
     def set_modified(self):
         if debug:
-            logger.debug(f'setting {self.key_name} as modified')
+            logger.debug(f'setting {self.key} as modified')
         self._changed = True
 
     def get(self, name, default=KeyError):
@@ -1411,7 +1404,7 @@ class KeyDict:
             value: field value
         """
         if debug:
-            logger.debug(f'setting key dict {self.key_name} '
+            logger.debug(f'setting key dict {self.key} '
                          f'{name}={_format_debug_value(value)}')
         try:
             if self.data[name] == value:
@@ -1428,7 +1421,7 @@ class KeyDict:
         Doesn't raise any exceptions if the field is not present
         """
         if debug:
-            logger.debug(f'deleting key dict {self.key_name} field {name}')
+            logger.debug(f'deleting key dict {self.key} field {name}')
         try:
             del self.data[name]
             self.set_modified()
@@ -1437,7 +1430,7 @@ class KeyDict:
 
     def close(self, _write=True):
         if _write and self._changed:
-            self.db.set(key=self.key, value=self.data)
+            self.db.key_set(key=self.key, value=self.data)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close(_write=exc_type is None)
@@ -1449,7 +1442,7 @@ class KeyList:
 
     Should not be used directly, better usage:
 
-    with db.key_list('path.to.key') as key:
+    with db.key_as_list('path.to.key') as key:
         # do something
 
     Direct acccess to key list is possible via obj.data. If the data
@@ -1466,7 +1459,7 @@ class KeyList:
 
     def open(self):
         try:
-            self.data = self.db.get(key=self.key)
+            self.data = self.db.key_get(key=self.key)
         except KeyError:
             self.data = []
 
@@ -1476,7 +1469,7 @@ class KeyList:
 
     def set_modified(self):
         if debug:
-            logger.debug(f'setting {self.key_name} as modified')
+            logger.debug(f'setting {self.key} as modified')
         self._changed = True
 
     def append(self, value):
@@ -1484,7 +1477,7 @@ class KeyList:
         Append value to list
         """
         if debug:
-            logger.debug(f'appending key list {self.key_name} '
+            logger.debug(f'appending key list {self.key} '
                          f'value {_format_debug_value(value)}')
         self.data.append(value)
         self.set_modified()
@@ -1494,14 +1487,14 @@ class KeyList:
         Remove value from list
         """
         if debug:
-            logger.debug(f'removing key list {self.key_name} '
+            logger.debug(f'removing key list {self.key} '
                          f'value {_format_debug_value(value)}')
         self.data.remove(value)
         self.set_modified()
 
     def close(self, _write=True):
         if _write and self._changed:
-            self.db.set(key=self.key, value=self.data)
+            self.db.key_set(key=self.key, value=self.data)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close(_write=exc_type is None)

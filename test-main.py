@@ -45,7 +45,7 @@ class Server:
         if self.is_server:
             uri = 'http://localhost:8879'
             with YEDB(uri) as db:
-                db.delete(key='/', recursive=True)
+                db.key_delete_recursive(key='/')
             return uri
         else:
             return DB_PATH
@@ -80,9 +80,9 @@ def test_create_and_convert(fmt, cfmt, checksums):
         info = db.info()
         assert info['fmt'] == fmt
         assert info['checksums'] == checksums
-        db.set('key1', 'test')
-        db.set('keys/k1', 123)
-        db.set('keys/k2', dict(a=2, b=3))
+        db.key_set('key1', 'test')
+        db.key_set('keys/k1', 123)
+        db.key_set('keys/k2', dict(a=2, b=3))
     finally:
         db.close()
     list(db.convert_fmt(cfmt, checksums=not checksums))
@@ -92,9 +92,9 @@ def test_create_and_convert(fmt, cfmt, checksums):
         info = db.info()
         assert info['fmt'] == cfmt
         assert info['checksums'] == (not checksums)
-        assert db.get('key1') == 'test'
-        assert db.get('keys/k1') == 123
-        assert db.get('keys/k2') == dict(a=2, b=3)
+        assert db.key_get('key1') == 'test'
+        assert db.key_get('keys/k1') == 123
+        assert db.key_get('keys/k2') == dict(a=2, b=3)
     finally:
         db.close()
 
@@ -105,9 +105,7 @@ def test_create_and_convert(fmt, cfmt, checksums):
     'value',
     ['test', 123, 1234.567, ['1', '2', '3'],
      dict(a=2, b=3), b'\x01\x02\x03'])
-@pytest.mark.parametrize('flush', [False, True])
-@pytest.mark.parametrize('stime', [None, time.time_ns()])
-def test_basic(fmt, key, value, flush, stime):
+def test_basic(fmt, key, value):
     # rapidjson breaks binary data, native json raises exception
     if fmt == 'json' and isinstance(value, bytes):
         return
@@ -115,35 +113,33 @@ def test_basic(fmt, key, value, flush, stime):
     with Server(fmt == 'server') as dbpath:
         with YEDB(dbpath, default_fmt=fmt) as db:
             if key:
-                db.set(key=key, value=value, flush=flush, stime=stime)
+                db.key_set(key=key, value=value)
             else:
                 with pytest.raises(Exception):
-                    db.set(key=key, value=value, flush=flush, stime=stime)
+                    db.key_set(key=key, value=value)
                 return
-            assert db.get(key=key) == value
+            assert db.key_get(key=key) == value
             assert db.key_exists(key=key) is True
-            ki = db.explain(key=key)
-            if stime:
-                assert ki['stime'] == stime
-            db.delete(key=key)
+            ki = db.key_explain(key=key)
+            db.key_delete(key=key)
             with pytest.raises((KeyError, RuntimeError)):
-                db.get(key='key')
+                db.key_get(key='key')
             with pytest.raises((KeyError, RuntimeError)):
-                db.explain(key='key')
+                db.key_explain(key='key')
             assert db.key_exists(key=key) is False
-            db.delete(key=key)
-            db.set(key=key, value=value, flush=flush, stime=stime)
-            assert db.get(key=key) == value
+            db.key_delete(key=key)
+            db.key_set(key=key, value=value)
+            assert db.key_get(key=key) == value
             key2 = 'renamed/' + key
-            db.rename(key=key, dst_key=key2)
-            assert db.get(key=key2) == value
-            db.delete(key=key2)
-            db.set(key=key, value=value, flush=flush, stime=stime)
+            db.key_rename(key=key, dst_key=key2)
+            assert db.key_get(key=key2) == value
+            db.key_delete(key=key2)
+            db.key_set(key=key, value=value)
             key2 = 'copied/' + key
-            db.copy(key=key, dst_key=key2)
-            assert db.get(key=key) == db.get(key=key2)
-            db.delete(key=key)
-            db.delete(key=key2)
+            db.key_copy(key=key, dst_key=key2)
+            assert db.key_get(key=key) == db.key_get(key=key2)
+            db.key_delete(key=key)
+            db.key_delete(key=key2)
 
 
 @pytest.mark.parametrize('server', [False, True])
@@ -151,8 +147,8 @@ def test_check_purge(server):
     clear()
     with Server(server) as dbpath:
         with YEDB(dbpath, default_fmt='msgpack') as db:
-            db.set(key='key1', value='123')
-            db.set(key='broken/key2', value='123')
+            db.key_set(key='key1', value='123')
+            db.key_set(key='broken/key2', value='123')
             key_file = Path(
                 f'{SERVER_DB_PATH if server else DB_PATH}/broken/key2.mpc')
             assert key_file.is_file() is True
@@ -168,42 +164,40 @@ def test_list_get_subkeys(server):
     with Server(server) as dbpath:
         with YEDB(dbpath) as db:
             with db.session() as session:
-                session.set(key='key1', value='0')
-                session.set(key='d/k1', value='1')
-                session.set(key='d/k2', value='2')
-                session.set(key='d/k3', value='3')
-                assert sorted(list(session.list_subkeys(key='/'))) == [
+                session.key_set(key='key1', value='0')
+                session.key_set(key='d/k1', value='1')
+                session.key_set(key='d/k2', value='2')
+                session.key_set(key='d/k3', value='3')
+                assert sorted(list(session.key_list(key='/'))) == [
                     'd/k1', 'd/k2', 'd/k3', 'key1'
-                ]
-                assert sorted(list(session.list_subkeys())) == [
-                    'd/k1', 'd/k2', 'd/k3', 'key1'
-                ]
-                assert sorted(list(session.list_subkeys(key='/d'))) == [
-                    'd/k1', 'd/k2', 'd/k3'
                 ]
                 assert sorted(list(
-                    session.list_subkeys(key='d'))) == ['d/k1', 'd/k2', 'd/k3']
-                assert sorted([list(x) for x in session.get_subkeys()
+                    session.key_list())) == ['d/k1', 'd/k2', 'd/k3', 'key1']
+                assert sorted(list(
+                    session.key_list(key='/d'))) == ['d/k1', 'd/k2', 'd/k3']
+                assert sorted(list(
+                    session.key_list(key='d'))) == ['d/k1', 'd/k2', 'd/k3']
+                assert sorted([list(x) for x in session.key_get_recursive()
                               ]) == [['d/k1', '1'], ['d/k2', '2'],
                                      ['d/k3', '3'], ['key1', '0']]
-                assert sorted([list(x) for x in (session.get_subkeys(key='d'))
-                              ]) == [['d/k1', '1'], ['d/k2', '2'],
-                                     ['d/k3', '3']]
+                assert sorted([
+                    list(x) for x in (session.key_get_recursive(key='d'))
+                ]) == [['d/k1', '1'], ['d/k2', '2'], ['d/k3', '3']]
 
 
 @pytest.mark.parametrize('server', [False, True])
-def test_key_dict(server):
+def test_key_as_dict(server):
     clear()
     with Server(server) as dbpath:
         with YEDB(dbpath) as db:
-            with db.key_dict('keys/d1') as key:
+            with db.key_as_dict('keys/d1') as key:
                 key.set('data', 123)
                 key.set('data2', 'test')
-            with db.key_dict('keys/d1') as key:
+            with db.key_as_dict('keys/d1') as key:
                 assert key.get('data') == 123
                 assert key.get('data2') == 'test'
                 key.delete('data')
-            with db.key_dict('keys/d1') as key:
+            with db.key_as_dict('keys/d1') as key:
                 with pytest.raises(KeyError):
                     key.get('data')
                 assert key.get('data2') == 'test'
@@ -214,15 +208,15 @@ def test_key_list(server):
     clear()
     with Server(server) as dbpath:
         with YEDB(dbpath) as db:
-            with db.key_list('keys/l1') as key:
+            with db.key_as_list('keys/l1') as key:
                 key.append(123)
                 key.append('test')
-            with db.key_list('keys/l1') as key:
+            with db.key_as_list('keys/l1') as key:
                 assert key.data == [123, 'test']
                 key.remove(123)
-            with db.key_list('keys/l1') as key:
+            with db.key_as_list('keys/l1') as key:
                 assert key.data == ['test']
                 key.data.clear()
                 key.set_modified()
-            with db.key_list('keys/l1') as key:
+            with db.key_as_list('keys/l1') as key:
                 assert key.data == []

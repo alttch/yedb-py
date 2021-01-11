@@ -66,9 +66,10 @@ REQ_JSON = 1
 REQ_MSGPACK = 2
 
 METHODS = [
-    'test', 'get', 'set', 'list_subkeys', 'get_subkeys', 'copy', 'rename',
-    'key_exists', 'explain', 'delete', 'purge', 'check', 'repair', 'info',
-    'dump_keys', 'load_keys', 'update_key'
+    'test', 'key_get', 'key_set', 'key_list', 'key_list_all',
+    'key_get_recursive', 'key_copy', 'key_rename', 'key_exists', 'key_explain',
+    'key_delete', 'key_delete_recursive', 'purge', 'check', 'repair', 'info',
+    'key_dump', 'key_load', 'key_update', 'safe_purge'
 ]
 
 
@@ -132,7 +133,7 @@ async def handle_jrpc(payload, remote_name):
                 res = getattr(yedb.db, method)(**p)
             if isinstance(res, GeneratorType):
                 res = list(res)
-            elif method == 'explain':
+            elif method == 'key_explain':
                 res['sha256'] = res['sha256'].hex()
             elif method == 'info':
                 res['host'] = platform.node()
