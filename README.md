@@ -189,7 +189,7 @@ with YEDB('/path/to/db') as db:
     # If modified, the key is automatically saved at the end of the statement.
 ```
 
-## Engine formats
+## Data formats
 
 The default engine data format is JSON
 (https://github.com/python-rapidjson/python-rapidjson is detected and imported
@@ -213,32 +213,9 @@ Databases can be easily converted between formats using "yedb" CLI tool or
 "convert\_fmt" method, unless format-specific features are used (e.g. if keys
         have binary data, they can't be converted to JSON properly).
 
-## Database format
+## Specifications
 
-The format is very simple:
-
-* .yedb - meta data file (JSON-serialized)
-* path/to/key.ext - key file
-* path/to/key.tmp - key didn't survive the power loss, but may be restored
-
-By default, databases use checksums, so key files have the following formats.
-
-For binary engine formats (msgpack, cbor, pickle):
-
-    * Byte 0-31 (32 bytes) - SHA256-checksum
-    * Byte 32-39 (8 bytes) - stime (key set time in nanoseconds) timestamp
-    * Byte 40-N - key value
-
-    For text engine formats (json, yaml):
-
-* line 1 - SHA256-checksum (hex)
-* line 2 - stime (key set time in nanoseconds) timestamp (hex)
-* line 3-N - key value, with LF ending
-
-If database checksums are not used, keys are stored in the chosen serialization
-format as-is. This can give benefits to easily manage / repair keys manually,
-but loses data reliability, key set time (file mtime can still be used) and
-using built-in repair tools.
+See https://github.com/alttch/yedb
 
 ## Schema validation
 
