@@ -423,7 +423,7 @@ def cli():
                 v = key_info['value']
                 if isinstance(v, dict) or isinstance(v, list):
                     import json
-                    v = json.dumps(v, indent=4, sort_keys=True)
+                    v = json.dumps(v, sort_keys=True)
                 checksum = key_info['sha256']
                 if checksum is None:
                     checksum = '-'
