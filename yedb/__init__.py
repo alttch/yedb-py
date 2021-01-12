@@ -1,4 +1,4 @@
-__version__ = '0.1.8'
+__version__ = '0.1.9'
 
 DB_VERSION = 1
 
@@ -357,7 +357,7 @@ class YEDB():
                     return '<Python code>', 'https://www.python.org/'
             except KeyError:
                 pass
-            return '<JSON Schema>', 'https://json-schema.org/'
+            return '<JSON Schema>', 'JSON Schema draft-7'
         while True:
             try:
                 schema_key = f'.schema/{key}' if key else '.schema'
