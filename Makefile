@@ -32,7 +32,7 @@ test:
 	pytest -x -v -v ./test-main.py
 
 docs:
-	pydoc2rst doc/pydoc/tpl_yedb.rst doc/pydoc/yedb.rst /opt/yedb
+	pydoc2rst doc/pydoc/tpl_yedb.rst doc/pydoc/yedb.rst /opt/yedb-py
 
 push:
 	git commit -a -m "v${VERSION}"
