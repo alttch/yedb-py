@@ -580,7 +580,7 @@ class YEDB():
         else:
             while name.startswith('/'):
                 name = name[1:]
-        return name
+        return name.replace('../', '')
 
     def convert_fmt(self, new_fmt, checksums=True):
         """
