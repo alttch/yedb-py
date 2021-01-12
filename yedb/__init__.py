@@ -899,7 +899,7 @@ class YEDB():
         """
         result = self._get(key, _extended_info=True)
         if result[0] is None:
-            tp = '<null>'
+            tp = 'null'
         else:
             tp = result[0].__class__.__name__
         try:
