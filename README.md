@@ -283,4 +283,4 @@ After, lower the default logging level.
 
 ## Module documentation
 
-https://yedb.readthedocs.io/
+https://yedb-py.readthedocs.io/
