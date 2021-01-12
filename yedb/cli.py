@@ -207,13 +207,13 @@ def cli():
     class KeyCompleter:
 
         def __call__(self, prefix, **kwargs):
-            for k in db.key_list_all():
+            for k in db.key_list_all(key=''):
                 yield k
 
     class KeyGroupCompleter:
 
         def __call__(self, prefix, **kwargs):
-            for k in db.key_list_all():
+            for k in db.key_list_all(key=''):
                 if '/' in k:
                     c = k.split('/')
                     for i in range(len(c) + 1):
@@ -427,6 +427,8 @@ def cli():
                 checksum = key_info['sha256']
                 if checksum is None:
                     checksum = '-'
+                elif isinstance(checksum, bytes):
+                    checksum = checksum.hex()
                 stime = key_info['stime']
                 if stime is None:
                     stime = '-'
@@ -463,9 +465,6 @@ def cli():
                     'name': 'file',
                     'value': key_info['file']
                 }]
-                data.append(
-                    dict(name='mtime', value=fmt_time(key_info['mtime'], 'ns')))
-                data.append(dict(name='size', value=fmt_size(key_info['size'])))
 
                 pretty_print_table(sorted(data, key=lambda k: k['name']))
             elif cmd == 'edit':
@@ -558,6 +557,8 @@ def cli():
                         db.key_delete(key=key)
             elif cmd == 'ls':
                 key = kwargs.get('KEY')
+                if key is None:
+                    key = ''
                 data = []
                 for k in db.key_list_all(
                         key=key) if kwargs.get('all') else db.key_list(key=key):
@@ -606,7 +607,7 @@ def cli():
                                   color="green" if checksums else "grey"))
                     from tqdm import tqdm
                     try:
-                        pbar = tqdm(total=len(list(db.key_list_all())))
+                        pbar = tqdm(total=len(list(db.key_list_all(key=''))))
                         db.close()
                         for key in db.convert_fmt(new_fmt, checksums=checksums):
                             pbar.update(1)
@@ -756,7 +757,7 @@ def cli():
 
     ap_ls = sp.add_parser('ls', help='List keys')
     ap_ls.add_argument('KEY', help='Root key, optional',
-                       nargs='?').completer = KeyCompleter()
+                       nargs='?').completer = KeyGroupCompleter()
     ap_ls.add_argument('-a',
                        '--all',
                        action='store_true',
