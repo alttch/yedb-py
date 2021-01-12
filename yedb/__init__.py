@@ -1,4 +1,4 @@
-__version__ = '0.1.7'
+__version__ = '0.1.8'
 
 DB_VERSION = 1
 
@@ -901,7 +901,20 @@ class YEDB():
         if result[0] is None:
             tp = 'null'
         else:
-            tp = result[0].__class__.__name__
+            if isinstance(result[0], bool):
+                tp = 'boolean'
+            elif isinstance(result[0], float) or isinstance(result[0], int):
+                tp = 'number'
+            elif isinstance(result[0], str):
+                tp = 'string'
+            elif isinstance(result[0], list) or isinstance(result[0], tuple):
+                tp = 'array'
+            elif isinstance(result[0], dict):
+                tp = 'object'
+            elif isinstance(result[0], bytes):
+                tp = 'bytes'
+            else:
+                tp = f'class:{result[0].__class__.__name__}'
         try:
             ln = len(result[0])
         except:

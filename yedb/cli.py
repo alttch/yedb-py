@@ -109,15 +109,16 @@ def cli():
         return tp
 
     def convert_value_from(value, p):
-        if p == 'int':
-            value = int(value)
-        elif p == 'float':
-            value = float(value)
-        elif p == 'str':
+        if p == 'number':
+            try:
+                value = int(value)
+            except:
+                value = float(value)
+        elif p == 'string':
             value = str(value)
             if value == '<null>':
                 value = None
-        elif p == 'bool':
+        elif p == 'boolean':
             value = val_to_boolean(value)
         elif p == 'json':
             if value.strip() == '' or value is None:
@@ -537,6 +538,8 @@ def cli():
                         value = sys.stdin.read()
                 if tp != 'bytes':
                     value = convert_value_from(value, tp)
+                elif isinstance(value, str):
+                    value = value.encode()
                 key = kwargs.get('KEY')
                 if ':' in key:
                     name, field = key.rsplit(':', 1)
@@ -740,7 +743,7 @@ def cli():
     ap_set.add_argument(
         '-p',
         '--type',
-        choices=['int', 'float', 'str', 'bool', 'json', 'yaml', 'bytes'],
+        choices=['number', 'string', 'boolean', 'json', 'yaml', 'bytes'],
         default='str')
 
     ap_copy = sp.add_parser('copy', help='Copy key')
