@@ -53,7 +53,8 @@ except:
 class ChecksumError(Exception):
 
     def __str__(self):
-        return 'Checksum error'
+        s = super().__str__()
+        return s if s else 'Checksum error'
 
 
 class SchemaValidationError(Exception):
