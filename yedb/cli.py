@@ -279,7 +279,7 @@ def cli():
                         tp = type_name(v)
                         if isinstance(v, dict) or isinstance(v, list):
                             import json
-                            v = json.dumps(v, indent=4, sort_keys=True)
+                            v = json.dumps(v, sort_keys=True)
                         data.append(
                             dict(key=k,
                                  type=tp,
