@@ -170,6 +170,8 @@ class YEDB():
                     yedb_socket.sendall(b'\x01\x02' +
                                         len(data).to_bytes(4, 'little') + data)
                     frame = yedb_socket.recv(6)
+                    while len(frame) < 6:
+                        frame += yedb_socket.recv(1)
                     if not frame or frame[0] != 1 or frame[1] != 2:
                         raise BrokenPipeError
                     frame_len = int.from_bytes(frame[2:], 'little')
