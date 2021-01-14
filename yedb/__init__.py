@@ -167,11 +167,14 @@ class YEDB():
             exc = None
             for i in range(3):
                 try:
+                    req_limit = time.perf_counter() + self.timeout
                     yedb_socket.sendall(b'\x01\x02' +
                                         len(data).to_bytes(4, 'little') + data)
                     frame = yedb_socket.recv(6)
                     while len(frame) < 6:
                         frame += yedb_socket.recv(1)
+                        if time.perf_counter() > req_limit:
+                            raise TimeoutError
                     if not frame or frame[0] != 1 or frame[1] != 2:
                         raise BrokenPipeError
                     frame_len = int.from_bytes(frame[2:], 'little')
@@ -180,6 +183,8 @@ class YEDB():
                     response = b''
                     while len(response) < frame_len:
                         response += yedb_socket.recv(SOCKET_BUF)
+                        if time.perf_counter() > req_limit:
+                            raise TimeoutError
                     data = msgpack.loads(response, raw=False)
                     break
                 except Exception as e:
