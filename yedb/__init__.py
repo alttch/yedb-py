@@ -206,9 +206,11 @@ class YEDB():
                             raise TimeoutError
                     data = msgpack.loads(response, raw=False)
                     break
-                except Exception as e:
+                except BrokenPipeError as e:
                     exc = e
                     yedb_socket = _reopen_socket()
+                except:
+                    raise RuntimeError('Server error')
             else:
                 yedb_socket.close()
                 raise exc if exc else RuntimeError('Server error')
