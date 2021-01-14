@@ -22,6 +22,8 @@ DB_MODE_UNIX_SOCKET = 1
 DB_MODE_TCP = 2
 DB_MODE_HTTP = 3
 
+META_READ_TIMEOUT = 0.1
+
 import threading
 import jsonschema
 
@@ -167,13 +169,15 @@ class YEDB():
             exc = None
             for i in range(3):
                 try:
-                    req_limit = time.perf_counter() + self.timeout
+                    t = time.perf_counter()
+                    meta_limit = t + META_READ_TIMEOUT
+                    req_limit = t + self.timeout
                     yedb_socket.sendall(b'\x01\x02' +
                                         len(data).to_bytes(4, 'little') + data)
                     frame = yedb_socket.recv(6)
                     while len(frame) < 6:
                         frame += yedb_socket.recv(1)
-                        if time.perf_counter() > req_limit:
+                        if time.perf_counter() > meta_limit:
                             raise TimeoutError
                     if not frame or frame[0] != 1 or frame[1] != 2:
                         raise BrokenPipeError
