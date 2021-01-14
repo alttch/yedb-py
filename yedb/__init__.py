@@ -206,7 +206,7 @@ class YEDB():
                             raise TimeoutError
                     data = msgpack.loads(response, raw=False)
                     break
-                except BrokenPipeError as e:
+                except (BrokenPipeError, TimeoutError) as e:
                     exc = e
                     yedb_socket = _reopen_socket()
                 except:
@@ -383,10 +383,10 @@ class YEDB():
             try:
                 schema = self.key_get(key)
                 if schema == {'type': 'code.python'}:
-                    return '<Python code>', 'https://www.python.org/'
+                    return '<Python code>', '!https://www.python.org/'
             except KeyError:
                 pass
-            return '<JSON Schema>', 'JSON Schema draft-7'
+            return '<JSON Schema>', '!JSON Schema draft-7'
         while True:
             try:
                 schema_key = f'.schema/{key}' if key else '.schema'

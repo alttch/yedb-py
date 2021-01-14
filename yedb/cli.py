@@ -308,7 +308,7 @@ def cli():
                         except KeyError:
                             print_err(f'Key not found: {key}')
                             return
-                    if key_info.get('schema'):
+                    if not key_info.get('schema', '!').startswith('!'):
                         try:
                             schema = db.key_get(key=key_info['schema'])
                         except KeyError:
