@@ -656,8 +656,8 @@ def cli():
                 tasks = []
                 test_arr = [777.777] * 100
                 test_dict = {f'v{n}': n * 777.777 for n in range(100)}
-                for n, v in [('numeric', 777.777), ('string', 'x' * 1000),
-                             ('array', test_arr), ('dict', test_dict)]:
+                for n, v in [('number', 777.777), ('string', 'x' * 1000),
+                             ('array', test_arr), ('object', test_dict)]:
                     start = time.perf_counter()
 
                     for i in range(threads):
@@ -677,8 +677,8 @@ def cli():
                 print()
                 list(db.purge())
                 for c in range(2):
-                    for n, v in [('numeric', 777.777), ('string', 'x' * 1000),
-                                 ('array', test_arr), ('dict', test_dict)]:
+                    for n, v in [('number', 777.777), ('string', 'x' * 1000),
+                                 ('array', test_arr), ('object', test_dict)]:
                         start = time.perf_counter()
                         for z in range(threads):
                             tasks.append(
