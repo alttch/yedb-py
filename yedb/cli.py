@@ -105,7 +105,20 @@ def cli():
         if v is None:
             tp = '<null>'
         else:
-            tp = v.__class__.__name__
+            if isinstance(v, bool):
+                tp = 'boolean'
+            elif isinstance(v, float) or isinstance(v, int):
+                tp = 'number'
+            elif isinstance(v, str):
+                tp = 'string'
+            elif isinstance(v, list) or isinstance(v, tuple):
+                tp = 'array'
+            elif isinstance(v, dict):
+                tp = 'object'
+            elif isinstance(v, bytes):
+                tp = 'bytes'
+            else:
+                tp = f'class:{result[0].__class__.__name__}'
         return tp
 
     def convert_value_from(value, p):
