@@ -14,7 +14,7 @@
 - YEDB is ultra-reliable, thread-safe and very easy to use.
 
 - I don't like Python
-- There are other [implementations](https://github.com/alttch/yedb#11-implementations)
+- There are other [implementations](https://www.yedb.org)
 
 YEDB is absolutely reliable rugged key-value database, which can survive in any
 power loss, unless the OS file system die. Keys data is saved in the very
