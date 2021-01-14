@@ -321,6 +321,9 @@ def cli():
                                  if schema == {'type': 'code.python'} else None)
             elif cmd == 'cat':
                 dispatcher(cmd='get', KEY=kwargs.get('KEY'), raw=True)
+            elif cmd == 'server':
+                db.server_set(name=kwargs.get('_option'),
+                              value=yedb.val_to_boolean(kwargs.get('VALUE')))
             elif cmd == 'dump':
                 func = kwargs.get('_func')
                 if func is None:
@@ -589,12 +592,6 @@ def cli():
             elif cmd == 'purge':
                 for k in db.purge():
                     print_warn(f'Broken key REMOVED: {k}')
-            elif cmd == 'reopen':
-                if remote:
-                    db._not_implemented()
-                db.close()
-                db.open(**kwargs)
-                dispatcher(cmd='info')
             elif cmd == 'convert':
                 if remote:
                     db._not_implemented()
@@ -785,6 +782,20 @@ def cli():
     ap_info = sp.add_parser('info', help='Database info')
     ap_info.add_argument('-y', '--full', action='store_true')
 
+    ap_set = sp.add_parser('server', help='Set server options')
+    sp_set = ap_set.add_subparsers(dest='_option')
+
+    ap_set_auto_flush = sp_set.add_parser('auto_flush',
+                                          help='Set auto-flush mode')
+    ap_set_auto_flush.add_argument('VALUE',
+                                   help='Value',
+                                   choices=['true', 'false'])
+    ap_set_repair_recommended = sp_set.add_parser(
+        'repair_recommended', help='Set repair_recommended flag')
+    ap_set_repair_recommended.add_argument('VALUE',
+                                           help='Value',
+                                           choices=['true', 'false'])
+
     ap_benchmark = sp.add_parser('benchmark', help='Benchmark database')
     ap_benchmark.add_argument('--threads',
                               metavar='NUMBER',
@@ -794,10 +805,6 @@ def cli():
     ap_check = sp.add_parser('check', help='Check database')
 
     ap_repair = sp.add_parser('repair', help='Repair database')
-
-    if not need_launch:
-        ap_reopen = sp.add_parser('reopen', help='Reconnect')
-        ap_reopen.add_argument('-f', '--auto-flush', action='store_true')
 
     ap_purge = sp.add_parser('purge', help='Purge database')
 

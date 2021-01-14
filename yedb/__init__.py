@@ -70,6 +70,21 @@ def _format_debug_value(v):
     return dv.replace('\n', ' ').replace('\r', '').replace('\t', '')
 
 
+def val_to_boolean(val):
+    if val is None:
+        return None
+    elif isinstance(val, bool):
+        return val
+    else:
+        val = str(val)
+        if val.lower() in ['1', 't', 'true', 'yes', 'on', 'y']:
+            return True
+        elif val.lower() in ['0', 'f', 'false', 'no', 'off', 'n']:
+            return False
+        else:
+            raise ValueError
+
+
 class Session:
     """
     Session object, all methods except open/close are proxied to db
@@ -422,7 +437,6 @@ class YEDB():
     def _init_db(self):
         self.dbinfo = {
             'lock_ex': self.lock_ex,
-            'auto_flush': self.auto_flush,
             'path': Path(self.path),
             'server': [SERVER_ID, __version__]
         }
@@ -574,6 +588,7 @@ class YEDB():
             if not self._opened:
                 raise RuntimeError('database is not opened')
             d = self.dbinfo.copy()
+            d['auto_flush'] = self.auto_flush
             d['repair_recommended'] = self.repair_recommended
             d['cached_keys'] = len(self.cache)
             try:
@@ -584,6 +599,14 @@ class YEDB():
             if debug:
                 d['debug'] = True
             return d
+
+    def server_set(self, name, value):
+        if name not in ['auto_flush', 'repair_recommended']:
+            raise ValueError
+        else:
+            if debug:
+                logger.debug(f'Setting server option {name}={value}')
+            setattr(self, name, value)
 
     @staticmethod
     def _fmt_key(name):
