@@ -354,6 +354,12 @@
       :returns: Generator object with broken keys found and removed
       
    
+   .. py:method:: YEDB.purge_cache()
+      :module: yedb
+   
+      Purge cache only
+      
+   
    .. py:method:: YEDB.repair()
       :module: yedb
    
