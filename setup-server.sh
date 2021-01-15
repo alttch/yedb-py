@@ -1,6 +1,6 @@
 #!/bin/sh
 
-YEDB_VERSION=0.1.19
+YEDB_VERSION=0.1.20
 
 REQUIRED="realpath python3 curl"
 MODS="cachetools==4.2.0 portalocker==2.0.0 jsonschema==3.2.0 yedb==${YEDB_VERSION} msgpack==1.0.2"
