@@ -179,6 +179,7 @@ def cli():
                     db_dir).is_socket() or db_dir.endswith(
                         '.sock') or db_dir.endswith('.socket'):
             options['timeout'] = 60
+            # TODO variable timeout
             remote = True
             db_path = db_dir
             db_ps = db_dir.split('//', 1)[-1]
