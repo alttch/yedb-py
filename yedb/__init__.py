@@ -1223,6 +1223,13 @@ class YEDB():
         """
         return self.purge(_keep_broken=True)
 
+    def purge_cache(self):
+        """
+        Purge cache only
+        """
+        with self.lock:
+            self.cache.clear()
+
     def purge(self, _keep_broken=False):
         """
         Purges empty directories
