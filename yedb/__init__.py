@@ -1031,12 +1031,28 @@ class YEDB():
             k.set_modified()
 
     def key_increment(self, key):
-        # TODO
-        raise AttributeError('not implemented')
+        with self.lock:
+            try:
+                value = self._get(key)[0]
+            except KeyError:
+                value = 0
+            if not isinstance(value, int):
+                raise ValueError(f'Unable to increment {key}')
+            value += 1
+            self.key_set(key, value)
+            return value
 
     def key_decrement(self, key):
-        # TODO
-        raise AttributeError('not implemented')
+        with self.lock:
+            try:
+                value = self._get(key)[0]
+            except KeyError:
+                value = 0
+            if not isinstance(value, int):
+                raise ValueError(f'Unable to increment {key}')
+            value -= 1
+            self.key_set(key, value)
+            return value
 
     def key_as_dict(self, key):
         """
