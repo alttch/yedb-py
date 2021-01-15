@@ -325,6 +325,8 @@ def cli():
                     try:
                         if not key_info['schema'].startswith('!'):
                             schema = db.key_get(key=key_info['schema'])
+                        else:
+                            schema = None
                     except:
                         schema = None
                     pretty_print(value,
@@ -693,7 +695,7 @@ def cli():
                                           (time.perf_counter() - start)),
                                     color='yellow')))
                 print()
-                list(db.purge())
+                db.purge_cache()
                 for c in range(2):
                     for n, v in [('number', 777.777), ('string', 'x' * 1000),
                                  ('array', test_arr), ('object', test_dict)]:
@@ -717,6 +719,7 @@ def cli():
                     print()
                 print('cleaning up...')
                 db.key_delete_recursive(key='.benchmark')
+                list(db.purge())
         except Exception as e:
             print_err(e)
             print_tb()
