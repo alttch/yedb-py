@@ -178,7 +178,7 @@ def cli():
                 'https://') or db_dir.startswith('tcp://') or Path(
                     db_dir).is_socket() or db_dir.endswith(
                         '.sock') or db_dir.endswith('.socket'):
-            options['timeout'] = 30
+            options['timeout'] = 60
             remote = True
             db_path = db_dir
             db_ps = db_dir.split('//', 1)[-1]
