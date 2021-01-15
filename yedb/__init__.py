@@ -1030,6 +1030,14 @@ class YEDB():
             k.data.update(data)
             k.set_modified()
 
+    def key_increment(self, key):
+        # TODO
+        raise AttributeError('not implemented')
+
+    def key_decrement(self, key):
+        # TODO
+        raise AttributeError('not implemented')
+
     def key_as_dict(self, key):
         """
         Returns KeyDict object

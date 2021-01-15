@@ -335,6 +335,10 @@ def cli():
             elif cmd == 'server':
                 db.server_set(name=kwargs.get('_option'),
                               value=yedb.val_to_boolean(kwargs.get('VALUE')))
+            elif cmd == 'incr':
+                print(db.key_increment(key=kwargs.get('KEY')))
+            elif cmd == 'decr':
+                print(db.key_decrement(key=kwargs.get('KEY')))
             elif cmd == 'dump':
                 func = kwargs.get('_func')
                 if func is None:
@@ -737,6 +741,12 @@ def cli():
     ap_get = sp.add_parser('cat', help='Get key raw value (same as get -R)')
     ap_get.add_argument('KEY', help='Key name or <key>:<field> for dict keys'
                        ).completer = KeyCompleter()
+
+    ap_get = sp.add_parser('incr', help='Increment numeric key')
+    ap_get.add_argument('KEY', help='Key name').completer = KeyCompleter()
+
+    ap_get = sp.add_parser('decr', help='Decrement numeric key')
+    ap_get.add_argument('KEY', help='Key name').completer = KeyCompleter()
 
     ap_explain = sp.add_parser('explain', help='Get key extended info')
     ap_explain.add_argument('KEY').completer = KeyCompleter()
