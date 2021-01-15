@@ -238,16 +238,16 @@ class YEDB():
                 data = json.loads(r.text)
         try:
             error_code = data['error']['code']
-            if error_code == -32001:
-                raise KeyError(data['error']['message'])
-            elif error_code == -32002:
-                raise ChecksumError(data['error']['message'])
-            elif error_code == -32003:
-                raise SchemaValidationError(data['error']['message'])
-            else:
-                raise RuntimeError(data['error']['message'])
         except KeyError:
             return data['result']
+        if error_code == -32001:
+            raise KeyError(data['error']['message'])
+        elif error_code == -32002:
+            raise ChecksumError(data['error']['message'])
+        elif error_code == -32003:
+            raise SchemaValidationError(data['error']['message'])
+        else:
+            raise RuntimeError(data['error']['message'])
 
     def _empty(self, *args, **kwargs):
         pass
