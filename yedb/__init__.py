@@ -1,4 +1,4 @@
-__version__ = '0.1.21'
+__version__ = '0.2.0'
 
 DB_VERSION = 1
 
@@ -363,9 +363,10 @@ class YEDB():
             self.lock = Lock()
             self.mode = DB_MODE_LOCAL
             self.path = Path(path).absolute()
+            self.key_path = (self.path / 'keys').absolute()
             self.default_fmt = default_fmt if default_fmt else DEFAULT_FMT
             self.default_checksums = default_checksums
-            self._path_len = len(self.path.absolute().as_posix()) + 1
+            self._key_path_len = len(self.key_path.absolute().as_posix()) + 1
             self._opened = False
             self._flock = None
             self._flock_fh = None
@@ -751,13 +752,14 @@ class YEDB():
                 for k, v in self.info().items():
                     logger.debug(f'{self.path.name}.{k}={v}')
 
-            if self.auto_flush:
-                self._sync_dirs([self.path])
-
             if self.repair_recommended:
                 logger.warning(f'DB {self.path} has not been closed correctly')
                 if auto_repair or self.auto_repair:
                     self.do_repair()
+        self.key_path.mkdir(exist_ok=True)
+        if self.auto_flush:
+            self._sync_dirs([self.path])
+
         return {'name': 'yedb', 'version': __version__}
 
     def _lock_db(self, timeout=None):
@@ -825,7 +827,7 @@ class YEDB():
             if not name:
                 raise ValueError('key name not specified')
             keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
-            keydir = self.path / keypath
+            keydir = self.key_path / keypath
             keydir.mkdir(exist_ok=True, parents=True)
             key_file = keydir / (keyn + self.suffix)
             if self.write_modified_only:
@@ -869,12 +871,12 @@ class YEDB():
             if not new_name:
                 raise ValueError('key new_name not specified')
             keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
-            keydir = self.path / keypath
+            keydir = self.key_path / keypath
             key_file = keydir / (keyn + self.suffix)
 
             keypath, keyn = new_name.rsplit(
                 '/', 1) if '/' in new_name else ('', new_name)
-            keydir = self.path / keypath
+            keydir = self.key_path / keypath
             keydir.mkdir(exist_ok=True, parents=True)
             dst_key_file = keydir / (keyn + self.suffix)
 
@@ -980,7 +982,7 @@ class YEDB():
             if not self._opened:
                 raise RuntimeError('database is not opened')
             keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
-            keydir = self.path / keypath
+            keydir = self.key_path / keypath
             key_file = keydir / (keyn + self.suffix)
             if _check_exists_only:
                 return name in self.cache or key_file.exists()
@@ -1105,12 +1107,12 @@ class YEDB():
         with self.lock:
             if not self._opened:
                 raise RuntimeError('database is not opened')
-            dn = self.path / name
+            dn = self.key_path / name
             if dn.is_dir() and recursive:
                 self._delete_subkeys(name, _no_flush=True)
                 dts.add(dn.parent)
             keypath, keyn = name.rsplit('/', 1) if '/' in name else ('', name)
-            keydir = self.path / keypath
+            keydir = self.key_path / keypath
             key_file = keydir / (keyn + self.suffix)
             if not _dir_only:
                 try:
@@ -1130,12 +1132,12 @@ class YEDB():
             except KeyError:
                 pass
             for p in [keydir] + list(keydir.parents):
-                if p == self.path:
+                if p == self.key_path:
                     break
                 try:
                     p.rmdir()
                     self._purge_cache_by_path(
-                        p.absolute().as_posix()[self._path_len:])
+                        p.absolute().as_posix()[self._key_path_len:])
                     if self.auto_flush and not _no_flush:
                         dts.add(p.parent)
                 except OSError:
@@ -1195,7 +1197,7 @@ class YEDB():
             if not self._opened:
                 raise RuntimeError('database is not opened')
             # find possible valid keys
-            for d in self.path.glob('**/*.tmp'):
+            for d in self.key_path.glob('**/*.tmp'):
                 try:
                     self._load_value(self.read(d))
                     if debug:
@@ -1209,7 +1211,7 @@ class YEDB():
                     result = False
                 if self.auto_flush:
                     dts.add(d.parent)
-                yield (str(d)[self._path_len:-4], result)
+                yield (str(d)[self._key_path_len:-4], result)
             if self.auto_flush:
                 self._sync_dirs(dts)
         # purge
@@ -1255,7 +1257,7 @@ class YEDB():
             if not self._opened:
                 raise RuntimeError('database is not opened')
             # clean up files
-            for d in self.path.glob('**/*'):
+            for d in self.key_path.glob('**/*'):
                 if not d.is_dir() and d != self.lock_file and \
                         d != self.meta_file and d.suffix != self.suffix:
                     if debug:
@@ -1269,12 +1271,12 @@ class YEDB():
                     except:
                         if debug:
                             logger.debug(f'broken key file found: {d}')
-                        yield str(d)[self._path_len:-self._suffix_len]
+                        yield str(d)[self._key_path_len:-self._suffix_len]
                         d.unlink()
                         if self.auto_flush:
                             dts.add(d.parent)
             # clean up directories
-            for d in reversed(sorted((self.path.glob('**')))):
+            for d in reversed(sorted((self.key_path.glob('**')))):
                 if d.is_dir():
                     try:
                         d.rmdir()
@@ -1298,7 +1300,7 @@ class YEDB():
         with self.lock:
             if not self._opened:
                 raise RuntimeError('database is not opened')
-            for d in self.path.glob('**/*'):
+            for d in self.key_path.glob('**/*'):
                 if d.suffix == self.suffix or d.suffix == '.tmp':
                     try:
                         if d.suffix == '.tmp':
@@ -1307,7 +1309,7 @@ class YEDB():
                     except:
                         if debug:
                             logger.debug(f'broken key file found: {d}')
-                        yield str(d)[self._path_len:-self._suffix_len]
+                        yield str(d)[self._key_path_len:-self._suffix_len]
 
     def key_list(self, key=''):
         """
@@ -1335,9 +1337,10 @@ class YEDB():
         with self.lock:
             if not self._opened:
                 raise RuntimeError('database is not opened')
-            for f in self.path.glob(f'{name}/**/*{self.suffix}'
-                                    if name else f'**/*{self.suffix}'):
-                name = f.absolute().as_posix()[self._path_len:-self._suffix_len]
+            for f in self.key_path.glob(f'{name}/**/*{self.suffix}'
+                                        if name else f'**/*{self.suffix}'):
+                name = f.absolute().as_posix()[self.
+                                               _key_path_len:-self._suffix_len]
                 if hidden or not name.startswith('.'):
                     yield name
             if self.key_exists(key):
@@ -1351,9 +1354,9 @@ class YEDB():
             if not self._opened:
                 raise RuntimeError('database is not opened')
             if name:
-                path = self.path / name
+                path = self.key_path / name
             else:
-                path = self.path
+                path = self.key_path
             try:
                 for k in reversed(sorted(self._list_subkeys(name,
                                                             hidden=True))):

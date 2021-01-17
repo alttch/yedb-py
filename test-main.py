@@ -150,7 +150,7 @@ def test_check_purge(server):
             db.key_set(key='key1', value='123')
             db.key_set(key='broken/key2', value='123')
             key_file = Path(
-                f'{SERVER_DB_PATH if server else DB_PATH}/broken/key2.mpc')
+                f'{SERVER_DB_PATH if server else DB_PATH}/keys/broken/key2.mpc')
             assert key_file.is_file() is True
             key_file.write_text('')
             assert list(db.check()) == ['broken/key2']
