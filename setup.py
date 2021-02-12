@@ -18,6 +18,12 @@ setuptools.setup(
     include_package_data=True,
     license='Apache License 2.0',
     install_requires=['portalocker', 'cachetools', 'jsonschema'],
+    extras_require={
+        'cli': [
+            'icli', 'neotermcolor', 'rapidtables', 'pyyaml', 'tqdm', 'pygments',
+            'getch'
+        ]
+    },
     classifiers=(
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: Apache Software License',
