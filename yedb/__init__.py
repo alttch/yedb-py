@@ -1,4 +1,4 @@
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 DB_VERSION = 1
 
@@ -238,7 +238,7 @@ class YEDB():
                 data = json.loads(r.text)
         try:
             error_code = data['error']['code']
-        except KeyError:
+        except (KeyError, TypeError):
             return data['result']
         if error_code == -32001:
             raise KeyError(data['error']['message'])
