@@ -1,4 +1,4 @@
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 
 DB_VERSION = 1
 
@@ -67,7 +67,7 @@ def _format_debug_value(v):
     dv = str(v)
     if len(dv) > 79:
         dv = dv[:76] + '...'
-    return dv.replace('\n', ' ').replace('\r', '').replace('\t', '')
+    return dv.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
 
 
 def val_to_boolean(val):
