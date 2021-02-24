@@ -594,6 +594,7 @@ class YEDB():
             d['auto_flush'] = self.auto_flush
             d['repair_recommended'] = self.repair_recommended
             d['cached_keys'] = len(self.cache)
+            d['lock_path'] = self.lock_file
             try:
                 d.update(self.meta_info.copy())
             except:
