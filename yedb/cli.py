@@ -430,11 +430,19 @@ def cli():
                         if f:
                             f.close()
             elif cmd == 'copy':
-                db.key_copy(key=kwargs.get('KEY'),
-                            dst_key=kwargs.get('DST_KEY'))
+                key = kwargs.get('KEY')
+                try:
+                    db.key_copy(key=key, dst_key=kwargs.get('DST_KEY'))
+                except KeyError:
+                    print_err(f'Key not found: {key}')
+                    return
             elif cmd == 'rename':
-                db.key_rename(key=kwargs.get('KEY'),
-                              dst_key=kwargs.get('DST_KEY'))
+                key = kwargs.get('KEY')
+                try:
+                    db.key_rename(key=key, dst_key=kwargs.get('DST_KEY'))
+                except KeyError:
+                    print_err(f'Key not found: {key}')
+                    return
             elif cmd == 'explain':
                 key = kwargs.get('KEY')
                 try:
