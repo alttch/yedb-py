@@ -6,6 +6,10 @@
    :module: yedb
 
 
+.. py:exception:: FieldNotFound
+   :module: yedb
+
+
 .. py:class:: KeyDict(db, key)
    :module: yedb
 
