@@ -1,4 +1,4 @@
-__version__ = '0.2.6'
+__version__ = '0.2.7'
 
 DB_VERSION = 1
 
@@ -983,7 +983,7 @@ class YEDB():
                     del self.cache[key]
                 except:
                     pass
-            return self.key_set(key=key, value=result)
+                return self.key_set(key=key, value=result)
 
     def key_explain(self, key):
         """
