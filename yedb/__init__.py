@@ -811,7 +811,7 @@ class YEDB():
 
     def key_set(self, key, value, _stime=None, _ignore_schema=False):
         """
-        Set key to value
+        Set key value
 
         The key file is always overriden
 
@@ -926,6 +926,64 @@ class YEDB():
                 specified, KeyError is raised)
         """
         return self._get(key, default)[0]
+
+    def key_get_field(self, key, field, default=KeyError):
+        """
+        Get key field value
+
+        Args:
+            key: key name
+            field: key field name
+            default: default value, if the field is not present (if not
+                specified, KeyError is raised)
+        """
+        result = self._get(key, default)[0]
+        for f in field.split('/'):
+            try:
+                result = result[f]
+            except KeyError:
+                raise KeyError(f'field not found: {field}')
+        return result
+
+    def key_set_field(self, key, field, value, default=KeyError):
+        """
+        Set key field value
+
+        The key file is always overriden
+
+        Args:
+            key: key name
+            field: field name
+            value: key value
+        """
+        try:
+            result = self._get(key, default)[0]
+        except KeyError:
+            result = {}
+        if isinstance(result, dict):
+            d = result.copy()
+        else:
+            d = result
+        fields = field.split('/')
+        for f in fields[:-1]:
+            if not isinstance(d, dict):
+                raise ValueError('field is not an object')
+            try:
+                d = d[f]
+            except KeyError:
+                d[f] = {}
+                d = d[f]
+        if not isinstance(d, dict):
+            raise ValueError('field is not an object')
+        else:
+            if fields[-1] not in d or d[
+                    fields[-1]] != value or not self.write_modified_only:
+                try:
+                    d[fields[-1]] = value
+                    del self.cache[key]
+                except:
+                    pass
+            return self.key_set(key=key, value=result)
 
     def key_explain(self, key):
         """
