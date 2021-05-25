@@ -253,6 +253,17 @@
                       specified, KeyError is raised)
       
    
+   .. py:method:: YEDB.key_get_field(key, field, default=<class 'KeyError'>)
+      :module: yedb
+   
+      Get key field value
+      
+      :param key: key name
+      :param field: key field name
+      :param default: default value, if the field is not present (if not
+                      specified, KeyError is raised)
+      
+   
    .. py:method:: YEDB.key_get_recursive(key='', _ignore_broken=False)
       :module: yedb
    
@@ -306,11 +317,23 @@
    .. py:method:: YEDB.key_set(key, value, _stime=None, _ignore_schema=False)
       :module: yedb
    
-      Set key to value
+      Set key value
       
       The key file is always overriden
       
       :param key: key name
+      :param value: key value
+      
+   
+   .. py:method:: YEDB.key_set_field(key, field, value, default=<class 'KeyError'>)
+      :module: yedb
+   
+      Set key field value
+      
+      The key file is always overriden
+      
+      :param key: key name
+      :param field: field name
       :param value: key value
       
    
