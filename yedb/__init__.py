@@ -59,6 +59,13 @@ class ChecksumError(Exception):
         return s if s else 'Checksum error'
 
 
+class FieldNotFound(Exception):
+
+    def __str__(self):
+        s = super().__str__()
+        return s if s else 'Field not found'
+
+
 class SchemaValidationError(Exception):
     pass
 
@@ -246,6 +253,8 @@ class YEDB():
             raise ChecksumError(data['error']['message'])
         elif error_code == -32003:
             raise SchemaValidationError(data['error']['message'])
+        if error_code == -32681:
+            raise FieldNotFound(data['error']['message'])
         else:
             raise RuntimeError(data['error']['message'])
 
@@ -942,7 +951,7 @@ class YEDB():
             try:
                 result = result[f]
             except KeyError:
-                raise KeyError(f'field not found: {field}')
+                raise FieldNotFound(f'field not found: {field}')
         return result
 
     def key_set_field(self, key, field, value, default=KeyError):
@@ -967,14 +976,14 @@ class YEDB():
         fields = field.split('/')
         for f in fields[:-1]:
             if not isinstance(d, dict):
-                raise ValueError('field is not an object')
+                raise FieldNotFound('field is not an object')
             try:
                 d = d[f]
             except KeyError:
                 d[f] = {}
                 d = d[f]
         if not isinstance(d, dict):
-            raise ValueError('field is not an object')
+            raise FieldNotFound('field is not an object')
         else:
             if fields[-1] not in d or d[
                     fields[-1]] != value or not self.write_modified_only:
