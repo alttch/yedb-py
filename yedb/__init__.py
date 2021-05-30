@@ -1,4 +1,4 @@
-__version__ = '0.2.10'
+__version__ = '0.2.11'
 
 DB_VERSION = 1
 
@@ -1020,8 +1020,8 @@ class YEDB():
             try:
                 d = d[f]
             except KeyError:
-                d[f] = {}
-                d = d[f]
+                # parent field not found - abort
+                return
         if not isinstance(d, dict):
             raise FieldNotFound('field is not an object')
         else:
