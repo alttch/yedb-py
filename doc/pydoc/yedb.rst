@@ -215,6 +215,18 @@
       :param key: key name
       
    
+   .. py:method:: YEDB.key_delete_field(key, field)
+      :module: yedb
+   
+      Delete key field value
+      
+      The key file is always overriden
+      
+      :param key: key name
+      :param field: field name
+      :param value: key value
+      
+   
    .. py:method:: YEDB.key_delete_recursive(key)
       :module: yedb
    
@@ -329,7 +341,7 @@
       :param value: key value
       
    
-   .. py:method:: YEDB.key_set_field(key, field, value, default=<class 'KeyError'>)
+   .. py:method:: YEDB.key_set_field(key, field, value)
       :module: yedb
    
       Set key field value
