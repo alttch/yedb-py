@@ -954,7 +954,7 @@ class YEDB():
                 raise FieldNotFound(f'field not found: {field}')
         return result
 
-    def key_set_field(self, key, field, value, default=KeyError):
+    def key_set_field(self, key, field, value):
         """
         Set key field value
 
@@ -966,10 +966,10 @@ class YEDB():
             value: key value
         """
         try:
-            result = self._get(key, default)[0]
+            result = self._get(key)[0]
         except KeyError:
             result = {}
-        if isinstance(result, dict):
+        if isinstance(result, dict) and '/' in field:
             d = result.copy()
         else:
             d = result
@@ -989,6 +989,45 @@ class YEDB():
                     fields[-1]] != value or not self.write_modified_only:
                 try:
                     d[fields[-1]] = value
+                    del self.cache[key]
+                except:
+                    pass
+                return self.key_set(key=key, value=result)
+
+    def key_delete_field(self, key, field):
+        """
+        Delete key field value
+
+        The key file is always overriden
+
+        Args:
+            key: key name
+            field: field name
+            value: key value
+        """
+        try:
+            result = self._get(key)[0]
+        except KeyError:
+            result = {}
+        if isinstance(result, dict) and '/' in field:
+            d = result.copy()
+        else:
+            d = result
+        fields = field.split('/')
+        for f in fields[:-1]:
+            if not isinstance(d, dict):
+                raise FieldNotFound('field is not an object')
+            try:
+                d = d[f]
+            except KeyError:
+                d[f] = {}
+                d = d[f]
+        if not isinstance(d, dict):
+            raise FieldNotFound('field is not an object')
+        else:
+            if fields[-1] in d:
+                del d[fields[-1]]
+                try:
                     del self.cache[key]
                 except:
                     pass
