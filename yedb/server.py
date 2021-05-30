@@ -1,4 +1,4 @@
-__version__ = '0.2.9'
+__version__ = '0.2.10'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
@@ -71,7 +71,7 @@ METHODS = [
     'key_delete', 'key_delete_recursive', 'purge', 'check', 'repair', 'info',
     'key_dump', 'key_load', 'key_update', 'safe_purge', 'purge_cache',
     'server_set', 'key_increment', 'key_decrement', 'key_get_field',
-    'key_set_field'
+    'key_set_field', 'key_delete_field'
 ]
 
 
