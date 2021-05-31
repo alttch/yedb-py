@@ -139,7 +139,7 @@ def cli():
             else:
                 import json
                 value = json.loads(value)
-        elif p == 'yaml':
+        elif p in ['yaml', 'yml']:
             if value.strip() == '' or value is None:
                 value = None
             else:
@@ -795,7 +795,7 @@ def cli():
     ap_set.add_argument(
         '-p',
         '--type',
-        choices=['number', 'string', 'boolean', 'json', 'yaml', 'bytes'],
+        choices=['number', 'string', 'boolean', 'json', 'yaml', 'yml', 'bytes'],
         default='str')
 
     ap_copy = sp.add_parser('copy', help='Copy key')
