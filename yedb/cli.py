@@ -235,14 +235,23 @@ def cli():
                         yield '/'.join(c[:i])
                 yield k
 
-    def pretty_print(value, raw=False, as_code=None):
+    def pretty_print(value, raw=False, as_code=None, raw_format=None):
         if isinstance(value, bytes):
             if sys.stdout.isatty():
                 raise RuntimeError(
                     'can not write binary data to the text console')
             else:
                 sys.stdout.buffer.write(value)
-        elif isinstance(value, list) or (isinstance(value, dict) and raw):
+        elif raw and raw_format in ['yml', 'yaml']:
+            j = yaml.dump(value, default_flow_style=False)
+            if sys.stdout.isatty():
+                from pygments import highlight, lexers, formatters
+                j = highlight(j, lexers.YamlLexer(),
+                              formatters.TerminalFormatter())
+            print(j)
+        elif (isinstance(value, list) or
+              (isinstance(value, dict) and raw)) or (raw and
+                                                     raw_format == 'json'):
             import json
             j = json.dumps(value, indent=4, sort_keys=True)
             if sys.stdout.isatty():
@@ -314,7 +323,9 @@ def cli():
                     else:
                         try:
                             if as_raw:
-                                pretty_print(db.key_get(key=key), raw=True)
+                                data = db.key_get(key=key)
+                                fmt = kwargs.get('raw_format')
+                                pretty_print(data, raw=True, raw_format=fmt)
                                 return
                             else:
                                 key_info = db.key_explain(key=key)
@@ -334,7 +345,10 @@ def cli():
                                  as_code='python'
                                  if schema == {'type': 'code.python'} else None)
             elif cmd == 'cat':
-                dispatcher(cmd='get', KEY=kwargs.get('KEY'), raw=True)
+                dispatcher(cmd='get',
+                           KEY=kwargs.get('KEY'),
+                           raw=True,
+                           raw_format=kwargs.get('raw_format'))
             elif cmd == 'server':
                 db.server_set(name=kwargs.get('_option'),
                               value=yedb.val_to_boolean(kwargs.get('VALUE')))
@@ -749,16 +763,24 @@ def cli():
                         '--raw',
                         help='Output raw value',
                         action='store_true')
+    ap_get.add_argument('-W',
+                        '--raw-format',
+                        help='Raw format',
+                        choices=['json', 'yaml', 'yml'])
 
-    ap_get = sp.add_parser('cat', help='Get key raw value (same as get -R)')
-    ap_get.add_argument('KEY', help='Key name or <key>:<field> for dict keys'
+    ap_cat = sp.add_parser('cat', help='Get key raw value (same as get -R)')
+    ap_cat.add_argument('KEY', help='Key name or <key>:<field> for dict keys'
                        ).completer = KeyCompleter()
+    ap_cat.add_argument('-W',
+                        '--raw-format',
+                        help='Raw format',
+                        choices=['json', 'yaml', 'yml'])
 
-    ap_get = sp.add_parser('incr', help='Increment numeric key')
-    ap_get.add_argument('KEY', help='Key name').completer = KeyCompleter()
+    ap_incr = sp.add_parser('incr', help='Increment numeric key')
+    ap_incr.add_argument('KEY', help='Key name').completer = KeyCompleter()
 
-    ap_get = sp.add_parser('decr', help='Decrement numeric key')
-    ap_get.add_argument('KEY', help='Key name').completer = KeyCompleter()
+    ap_decr = sp.add_parser('decr', help='Decrement numeric key')
+    ap_decr.add_argument('KEY', help='Key name').completer = KeyCompleter()
 
     ap_explain = sp.add_parser('explain', help='Get key extended info')
     ap_explain.add_argument('KEY').completer = KeyCompleter()
