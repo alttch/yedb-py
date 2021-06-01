@@ -763,7 +763,7 @@ def cli():
                         '--raw',
                         help='Output raw value',
                         action='store_true')
-    ap_get.add_argument('-W',
+    ap_get.add_argument('-p',
                         '--raw-format',
                         help='Raw format',
                         choices=['json', 'yaml', 'yml'])
@@ -771,7 +771,7 @@ def cli():
     ap_cat = sp.add_parser('cat', help='Get key raw value (same as get -R)')
     ap_cat.add_argument('KEY', help='Key name or <key>:<field> for dict keys'
                        ).completer = KeyCompleter()
-    ap_cat.add_argument('-W',
+    ap_cat.add_argument('-p',
                         '--raw-format',
                         help='Raw format',
                         choices=['json', 'yaml', 'yml'])
