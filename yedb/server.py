@@ -2,8 +2,6 @@ __version__ = '0.2.14'
 
 PID_FILE = '/tmp/yedb-server.pid'
 
-DEFAULT_PORT = 8870
-
 import yedb
 import platform
 import os
@@ -20,6 +18,8 @@ import logging
 import signal
 
 logger = logging.getLogger('yedb')
+
+from yedb.common import METHODS, DEFAULT_SERVER_PORT
 
 
 class DummyLock:
@@ -64,15 +64,6 @@ except:
 
 REQ_JSON = 1
 REQ_MSGPACK = 2
-
-METHODS = [
-    'test', 'key_get', 'key_set', 'key_list', 'key_list_all',
-    'key_get_recursive', 'key_copy', 'key_rename', 'key_exists', 'key_explain',
-    'key_delete', 'key_delete_recursive', 'purge', 'check', 'repair', 'info',
-    'key_dump', 'key_load', 'key_update', 'safe_purge', 'purge_cache',
-    'server_set', 'key_increment', 'key_decrement', 'key_get_field',
-    'key_set_field', 'key_delete_field'
-]
 
 
 class InvalidRequest(Exception):
@@ -247,7 +238,7 @@ def start(bind='tcp://127.0.0.1',
             host, port = _bind.rsplit(':', 1)
         except ValueError:
             host = _bind
-            port = DEFAULT_PORT
+            port = DEFAULT_SERVER_PORT
         port = int(port)
         socket = (host, port)
         socket_unix = False
@@ -258,7 +249,7 @@ def start(bind='tcp://127.0.0.1',
             host, port = _bind.rsplit(':', 1)
         except ValueError:
             host = _bind
-            port = DEFAULT_PORT
+            port = DEFAULT_SERVER_PORT
         from aiohttp import web
         app = web.Application()
         app.add_routes([web.post('/', handle_web)])

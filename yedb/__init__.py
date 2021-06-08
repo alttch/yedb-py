@@ -299,7 +299,7 @@ class YEDB():
         Key parts are split with "/" symbols
 
         If path is specified as HTTP/HTTPS URI, the object transforms itself
-        into JSON RPC client (methods, not listed at yedb.server.METHODS
+        into JSON RPC client (methods, not listed at yedb.common.METHODS
         become unimplemented)
 
         Args:
@@ -338,8 +338,8 @@ class YEDB():
                     host, port = uri.rsplit(':', 1)
                     self._tcp_path = (host, int(port))
                 else:
-                    from yedb.server import DEFAULT_PORT
-                    self._tcp_path = (uri, DEFAULT_PORT)
+                    from yedb.common import DEFAULT_SERVER_PORT
+                    self._tcp_path = (uri, DEFAULT_SERVER_PORT)
             username = kwargs.get('http_username')
             if username:
                 password = kwargs.get('http_password', '')
@@ -353,7 +353,7 @@ class YEDB():
                 self.http_auth = Auth(username, password)
             else:
                 self.http_auth = None
-            from yedb.server import METHODS
+            from yedb.common import METHODS
             for f in dir(self):
                 fn = getattr(self, f)
                 if fn.__class__.__name__ == 'method':
