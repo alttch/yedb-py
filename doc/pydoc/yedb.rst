@@ -128,7 +128,7 @@
    Key parts are split with "/" symbols
    
    If path is specified as HTTP/HTTPS URI, the object transforms itself
-   into JSON RPC client (methods, not listed at yedb.server.METHODS
+   into JSON RPC client (methods, not listed at yedb.common.METHODS
    become unimplemented)
    
    :param path: database directory
