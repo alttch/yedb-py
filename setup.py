@@ -1,4 +1,4 @@
-__version__ = '0.2.15'
+__version__ = '0.2.16'
 
 import setuptools
 
@@ -17,7 +17,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     license='Apache License 2.0',
-    install_requires=['portalocker', 'cachetools', 'jsonschema'],
+    install_requires=['portalocker', 'cachetools', 'jsonschema', 'msgpack'],
     extras_require={
         'cli': [
             'icli', 'neotermcolor', 'rapidtables', 'pyyaml', 'tqdm', 'pygments',
