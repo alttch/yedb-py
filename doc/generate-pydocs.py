@@ -12,4 +12,4 @@ if len(sys.argv) < 2:
 else:
     for i in sys.argv[1:]:
         os.system(
-            f'pydoc2rst pydoc/tpl_{i}.rst pydoc/pydoc_{i}.rst')
+            f'pydoc2rst pydoc/tpl_{i}.rst pydoc/pydoc_{i}.rst /opt/yedb')
