@@ -1,4 +1,4 @@
 YEDB library methods
 ********************
 
-.. include:: pydoc/yedb.rst
+.. include:: pydoc/pydoc_yedb.rst

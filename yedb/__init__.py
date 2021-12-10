@@ -8,7 +8,7 @@ DEFAULT_TIMEOUT = 5
 
 DEFAULT_CACHE_SIZE = 1000
 
-SOCKET_BUF = 8192
+SOCKET_BUF = 1024
 
 FMTS = ['json', 'yaml', 'msgpack', 'cbor', 'pickle']
 
