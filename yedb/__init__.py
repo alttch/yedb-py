@@ -253,7 +253,7 @@ class YEDB():
             raise ChecksumError(data['error']['message'])
         elif error_code == -32003:
             raise SchemaValidationError(data['error']['message'])
-        if error_code == -32681:
+        elif error_code == -32005:
             raise FieldNotFound(data['error']['message'])
         else:
             raise RuntimeError(data['error']['message'])
