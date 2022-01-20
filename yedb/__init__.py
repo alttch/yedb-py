@@ -21,6 +21,7 @@ DB_MODE_LOCAL = 0
 DB_MODE_UNIX_SOCKET = 1
 DB_MODE_TCP = 2
 DB_MODE_HTTP = 3
+DB_MODE_ELBUS = 4
 
 META_READ_TIMEOUT = 0.1
 
@@ -151,112 +152,167 @@ class YEDB():
     def _remote_call(self, method, **kwargs):
 
         def _reopen_socket():
-            try:
-                g.yedb_socket.close()
-            except:
-                pass
-            if debug:
-                logger.debug(f'(re)opening socket {self.path}')
-            yedb_socket = self._init_socket()
-            yedb_socket.connect(self.path if self.mode ==
-                                DB_MODE_UNIX_SOCKET else self._tcp_path)
-            g.yedb_socket = yedb_socket
-            return yedb_socket
+            if self.mode == DB_MODE_ELBUS:
+                try:
+                    g.yedb_socket.client.disconnect()
+                except:
+                    pass
+                if debug:
+                    logger.debug(f'(re)creating elbus RPC {self.path}')
+                import elbus
+                client = elbus.client.Client(self.path,
+                                             f'yedb-cli-{os.getpid()}')
+                client.timeout = self.timeout
+                client.connect()
+                rpc = elbus.rpc.Rpc(client)
+                g.yedb_socket = rpc
+                return rpc
+            else:
+                try:
+                    g.yedb_socket.close()
+                except:
+                    pass
+                if debug:
+                    logger.debug(f'(re)opening socket {self.path}')
+                yedb_socket = self._init_socket()
+                yedb_socket.connect(self.path if self.mode ==
+                                    DB_MODE_UNIX_SOCKET else self._tcp_path)
+                g.yedb_socket = yedb_socket
+                return yedb_socket
 
-        req = {'jsonrpc': '2.0', 'id': 1, 'method': method, 'params': kwargs}
-        try:
-            import msgpack
-            use_msgpack = True
-            data = msgpack.dumps(req)
-        except ModuleNotFoundError:
-            if self.mode != DB_MODE_HTTP:
-                raise
+        def format_exception(error_code, message):
+            if error_code == -32001:
+                raise KeyError(message)
+            elif error_code == -32002:
+                raise ChecksumError(message)
+            elif error_code == -32003:
+                raise SchemaValidationError(message)
+            elif error_code == -32005:
+                raise FieldNotFound(message)
+            else:
+                raise RuntimeError(message)
+
+        if self.mode == DB_MODE_ELBUS:
+            import msgpack, elbus
             try:
-                import rapidjson as json
-            except:
-                import json
-            use_msgpack = False
-            data = json.dumps(req)
-        if debug:
-            logger.debug(f'JRPC ({"msgpack" if use_msgpack else "json"}) '
-                         f'{self.path} method={method} auth={self.http_auth}')
-        if self.mode != DB_MODE_HTTP:
-            try:
-                yedb_socket = g.yedb_socket
+                rpc = g.yedb_socket
             except AttributeError:
-                yedb_socket = _reopen_socket()
-            if yedb_socket._closed:
-                yedb_socket = _reopen_socket()
-            frame_len = 0
-            exc = None
+                rpc = _reopen_socket()
+            if not rpc.is_connected():
+                rpc = _reopen_socket()
+            request = elbus.rpc.Request(method, msgpack.dumps(kwargs))
+            request.qos = 3
             for i in range(3):
                 try:
-                    t = time.perf_counter()
-                    meta_limit = t + META_READ_TIMEOUT
-                    req_limit = t + self.timeout
-                    yedb_socket.sendall(b'\x01\x02' +
-                                        len(data).to_bytes(4, 'little') + data)
-                    frame = yedb_socket.recv(6)
-                    while len(frame) < 6:
-                        frame += yedb_socket.recv(1)
-                        if time.perf_counter() > meta_limit:
-                            raise TimeoutError
-                    if not frame or frame[0] != 1 or frame[1] != 2:
-                        raise BrokenPipeError
-                    frame_len = int.from_bytes(frame[2:], 'little')
-                    if frame_len == 0:
-                        raise BrokenPipeError
-                    response = b''
-                    while len(response) < frame_len:
-                        response += yedb_socket.recv(SOCKET_BUF)
-                        if time.perf_counter() > req_limit:
-                            raise TimeoutError
-                    data = msgpack.loads(response, raw=False)
-                    break
+                    event = rpc.call(self.elbus_target, request)
+                    return msgpack.loads(event.wait_completed(
+                        timeout=self.timeout).get_payload(),
+                                         raw=False)
                 except (BrokenPipeError, TimeoutError) as e:
                     exc = e
                     yedb_socket = _reopen_socket()
+                except elbus.rpc.RpcException as e:
+                    raise format_exception(e.rpc_error_code,
+                                           e.rpc_error_message.decode())
                 except:
                     raise RuntimeError('Server error')
             else:
-                yedb_socket.close()
+                yedb_socket.disconnect()
                 raise exc if exc else RuntimeError('Server error')
         else:
+            req = {
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': method,
+                'params': kwargs
+            }
             try:
-                post = g.yedb_socket.post
-            except AttributeError:
-                if debug:
-                    logger.debug(f'(re)opening http session')
-                import requests
-                session = requests.Session()
-                g.yedb_socket = session
-                post = session.post
-            # from requests import post
-            r = post(self.path,
-                     data=data,
-                     headers=MSGPACK_HEADERS if use_msgpack else JSON_HEADERS,
-                     timeout=self.timeout,
-                     auth=self.http_auth)
-            if not r.ok:
-                raise RuntimeError(f'http response code {r.status_code}')
-            if use_msgpack:
-                data = msgpack.loads(r.content, raw=False)
+                import msgpack
+                use_msgpack = True
+                data = msgpack.dumps(req)
+            except ModuleNotFoundError:
+                if self.mode != DB_MODE_HTTP:
+                    raise
+                try:
+                    import rapidjson as json
+                except:
+                    import json
+                use_msgpack = False
+                data = json.dumps(req)
+            if debug:
+                logger.debug(
+                    f'JRPC ({"msgpack" if use_msgpack else "json"}) '
+                    f'{self.path} method={method} auth={self.http_auth}')
+            if self.mode != DB_MODE_HTTP:
+                try:
+                    yedb_socket = g.yedb_socket
+                except AttributeError:
+                    yedb_socket = _reopen_socket()
+                if yedb_socket._closed:
+                    yedb_socket = _reopen_socket()
+                frame_len = 0
+                exc = None
+                for i in range(3):
+                    try:
+                        t = time.perf_counter()
+                        meta_limit = t + META_READ_TIMEOUT
+                        req_limit = t + self.timeout
+                        yedb_socket.sendall(b'\x01\x02' +
+                                            len(data).to_bytes(4, 'little') +
+                                            data)
+                        frame = yedb_socket.recv(6)
+                        while len(frame) < 6:
+                            frame += yedb_socket.recv(1)
+                            if time.perf_counter() > meta_limit:
+                                raise TimeoutError
+                        if not frame or frame[0] != 1 or frame[1] != 2:
+                            raise BrokenPipeError
+                        frame_len = int.from_bytes(frame[2:], 'little')
+                        if frame_len == 0:
+                            raise BrokenPipeError
+                        response = b''
+                        while len(response) < frame_len:
+                            response += yedb_socket.recv(SOCKET_BUF)
+                            if time.perf_counter() > req_limit:
+                                raise TimeoutError
+                        data = msgpack.loads(response, raw=False)
+                        break
+                    except (BrokenPipeError, TimeoutError) as e:
+                        exc = e
+                        yedb_socket = _reopen_socket()
+                    except:
+                        raise RuntimeError('Server error')
+                else:
+                    yedb_socket.close()
+                    raise exc if exc else RuntimeError('Server error')
             else:
-                data = json.loads(r.text)
-        try:
-            error_code = data['error']['code']
-        except (KeyError, TypeError):
-            return data['result']
-        if error_code == -32001:
-            raise KeyError(data['error']['message'])
-        elif error_code == -32002:
-            raise ChecksumError(data['error']['message'])
-        elif error_code == -32003:
-            raise SchemaValidationError(data['error']['message'])
-        elif error_code == -32005:
-            raise FieldNotFound(data['error']['message'])
-        else:
-            raise RuntimeError(data['error']['message'])
+                try:
+                    post = g.yedb_socket.post
+                except AttributeError:
+                    if debug:
+                        logger.debug(f'(re)opening http session')
+                    import requests
+                    session = requests.Session()
+                    g.yedb_socket = session
+                    post = session.post
+                # from requests import post
+                r = post(
+                    self.path,
+                    data=data,
+                    headers=MSGPACK_HEADERS if use_msgpack else JSON_HEADERS,
+                    timeout=self.timeout,
+                    auth=self.http_auth)
+                if not r.ok:
+                    raise RuntimeError(f'http response code {r.status_code}')
+                if use_msgpack:
+                    data = msgpack.loads(r.content, raw=False)
+                else:
+                    data = json.loads(r.text)
+            try:
+                error_code = data['error']['code']
+            except (KeyError, TypeError):
+                return data['result']
+            raise format_exception(error_code, data['error'].get('message', ''))
 
     def _empty(self, *args, **kwargs):
         pass
@@ -324,14 +380,24 @@ class YEDB():
         if path.startswith('http://') or path.startswith(
                 'https://') or path.startswith('tcp://') or Path(
                     path).is_socket() or path.endswith(
-                        '.sock') or path.endswith('.socket'):
-            self.path = path
-            if Path(path).is_socket() or path.endswith(
+                        '.sock') or path.endswith('.socket') or path.startswith(
+                            'elbus://'):
+            if path.startswith('elbus://'):
+                try:
+                    self.path, self.elbus_target = path[8:].rsplit(':', 1)
+                except:
+                    print(f'Invalid path: {path}')
+                    raise
+                self.mode = DB_MODE_ELBUS
+            elif Path(path).is_socket() or path.endswith(
                     '.sock') or path.endswith('.socket'):
+                self.path = path
                 self.mode = DB_MODE_UNIX_SOCKET
             elif path.startswith('https://') or path.startswith('http://'):
+                self.path = path
                 self.mode = DB_MODE_HTTP
             else:
+                self.path = path
                 self.mode = DB_MODE_TCP
                 uri = path[6:].split('/', 1)[0]
                 if ':' in uri:
