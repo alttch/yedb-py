@@ -14,7 +14,7 @@
 - YEDB is ultra-reliable, thread-safe and very easy to use.
 
 - I don't like Python
-- There are other [implementations](https://www.yedb.org)
+- There are other [implementations](https://yedb.bma.ai)
 
 [![Power loss data survive
 demo](https://img.youtube.com/vi/i3hSWjrNqLo/0.jpg)](https://www.youtube.com/watch?v=i3hSWjrNqLo)
