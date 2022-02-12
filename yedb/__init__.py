@@ -213,7 +213,7 @@ class YEDB():
                     yedb_socket = _reopen_socket()
                 except elbus.rpc.RpcException as e:
                     raise format_exception(e.rpc_error_code,
-                                           e.rpc_error_message.decode())
+                                           e.rpc_error_payload.decode())
                 except:
                     raise RuntimeError('Server error')
             else:
