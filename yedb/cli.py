@@ -28,7 +28,7 @@ def cli():
         print('Please manually install required CLI modules:')
         print()
         print('  pip3 install icli neotermcolor '
-              'rapidtables pyyaml tqdm pygments getch')
+              'rapidtables pyyaml tqdm pygments py-getch')
         print()
         raise
     import sys

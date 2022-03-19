@@ -5,7 +5,7 @@ YEDB_VERSION=0.2.20
 REQUIRED="realpath python3 curl"
 MODS="cachetools==4.2.0 portalocker==2.0.0 jsonschema==3.2.0 yedb==${YEDB_VERSION} msgpack==1.0.2"
 
-MODS_CLIENT="icli==0.0.10 neotermcolor==2.0.8 rapidtables==0.1.11 pyyaml==5.3.1 tqdm==4.55.1 pygments==2.7.3 getch==1.0"
+MODS_CLIENT="icli==0.0.10 neotermcolor==2.0.8 rapidtables==0.1.11 pyyaml==5.3.1 tqdm==4.55.1 pygments==2.7.3 py-getch==1.0.1"
 
 [ -z "$YEDBD_BIND" ] && YEDBD_BIND=tcp://127.0.0.1:8870
 

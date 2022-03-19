@@ -1,4 +1,4 @@
-__version__ = '0.2.20'
+__version__ = '0.2.21'
 
 PID_FILE = '/tmp/yedb-server.pid'
 

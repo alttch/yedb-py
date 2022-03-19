@@ -1,4 +1,4 @@
-__version__ = '0.2.20'
+__version__ = '0.2.21'
 
 import setuptools
 
@@ -21,7 +21,7 @@ setuptools.setup(
     extras_require={
         'cli': [
             'icli', 'neotermcolor', 'rapidtables', 'pyyaml', 'tqdm', 'pygments',
-            'getch'
+            'py-getch'
         ]
     },
     classifiers=(
