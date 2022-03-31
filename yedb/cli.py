@@ -65,7 +65,8 @@ def cli():
         else:
             print_err('FAILED')
         if delay:
-            getch.getch()
+            if getch.getch() == '\x03':
+                raise KeyboardInterrupt
 
     def fmt_size(num, suffix='B'):
         for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
@@ -118,7 +119,7 @@ def cli():
             elif isinstance(v, bytes):
                 tp = 'bytes'
             else:
-                tp = f'class:{result[0].__class__.__name__}'
+                tp = f'class:{v.__class__.__name__}'
         return tp
 
     def convert_value_from(value, p):
@@ -556,7 +557,10 @@ def cli():
                             else:
                                 data = y
                         except:
-                            print_tb(force=True, delay=True)
+                            try:
+                                print_tb(force=True, delay=True)
+                            except KeyboardInterrupt:
+                                break
                             continue
                         if data == value:
                             break
@@ -565,7 +569,10 @@ def cli():
                                 db.key_set(key=key, value=data)
                                 break
                             except:
-                                print_tb(force=True, delay=True)
+                                try:
+                                    print_tb(force=True, delay=True)
+                                except KeyboardInterrupt:
+                                    break
                                 continue
                 finally:
                     try:
