@@ -1,4 +1,4 @@
-__version__ = '0.2.23'
+__version__ = '0.2.24'
 
 DB_VERSION = 1
 
@@ -384,7 +384,7 @@ class YEDB():
                             'rt://'):
             if path.startswith('rt://'):
                 try:
-                    self.path, self.busrt_target = path[8:].rsplit(':', 1)
+                    self.path, self.busrt_target = path[5:].rsplit(':', 1)
                 except:
                     print(f'Invalid path: {path}')
                     raise
