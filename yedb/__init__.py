@@ -1,4 +1,4 @@
-__version__ = '0.2.24'
+__version__ = '0.2.25'
 
 DB_VERSION = 1
 
@@ -21,7 +21,7 @@ DB_MODE_LOCAL = 0
 DB_MODE_UNIX_SOCKET = 1
 DB_MODE_TCP = 2
 DB_MODE_HTTP = 3
-DB_MODE_ELBUS = 4
+DB_MODE_BUSRT = 4
 
 META_READ_TIMEOUT = 0.1
 
@@ -152,7 +152,7 @@ class YEDB():
     def _remote_call(self, method, **kwargs):
 
         def _reopen_socket():
-            if self.mode == DB_MODE_ELBUS:
+            if self.mode == DB_MODE_BUSRT:
                 try:
                     g.yedb_socket.client.disconnect()
                 except:
@@ -192,7 +192,7 @@ class YEDB():
             else:
                 raise RuntimeError(message)
 
-        if self.mode == DB_MODE_ELBUS:
+        if self.mode == DB_MODE_BUSRT:
             import msgpack, busrt
             try:
                 rpc = g.yedb_socket
@@ -388,7 +388,7 @@ class YEDB():
                 except:
                     print(f'Invalid path: {path}')
                     raise
-                self.mode = DB_MODE_ELBUS
+                self.mode = DB_MODE_BUSRT
             elif Path(path).is_socket() or path.endswith(
                     '.sock') or path.endswith('.socket'):
                 self.path = path
