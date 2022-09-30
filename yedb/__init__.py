@@ -1,4 +1,4 @@
-__version__ = '0.2.22'
+__version__ = '0.2.23'
 
 DB_VERSION = 1
 
@@ -158,13 +158,13 @@ class YEDB():
                 except:
                     pass
                 if debug:
-                    logger.debug(f'(re)creating elbus RPC {self.path}')
-                import elbus
-                client = elbus.client.Client(self.path,
+                    logger.debug(f'(re)creating busrt RPC {self.path}')
+                import busrt
+                client = busrt.client.Client(self.path,
                                              f'yedb-cli-{os.getpid()}')
                 client.timeout = self.timeout
                 client.connect()
-                rpc = elbus.rpc.Rpc(client)
+                rpc = busrt.rpc.Rpc(client)
                 g.yedb_socket = rpc
                 return rpc
             else:
@@ -193,25 +193,25 @@ class YEDB():
                 raise RuntimeError(message)
 
         if self.mode == DB_MODE_ELBUS:
-            import msgpack, elbus
+            import msgpack, busrt
             try:
                 rpc = g.yedb_socket
             except AttributeError:
                 rpc = _reopen_socket()
             if not rpc.is_connected():
                 rpc = _reopen_socket()
-            request = elbus.rpc.Request(method, msgpack.dumps(kwargs))
+            request = busrt.rpc.Request(method, msgpack.dumps(kwargs))
             request.qos = 3
             for i in range(3):
                 try:
-                    event = rpc.call(self.elbus_target, request)
+                    event = rpc.call(self.busrt_target, request)
                     return msgpack.loads(event.wait_completed(
                         timeout=self.timeout).get_payload(),
                                          raw=False)
                 except (BrokenPipeError, TimeoutError) as e:
                     exc = e
                     yedb_socket = _reopen_socket()
-                except elbus.rpc.RpcException as e:
+                except busrt.rpc.RpcException as e:
                     raise format_exception(e.rpc_error_code,
                                            e.rpc_error_payload.decode())
                 except:
@@ -381,10 +381,10 @@ class YEDB():
                 'https://') or path.startswith('tcp://') or Path(
                     path).is_socket() or path.endswith(
                         '.sock') or path.endswith('.socket') or path.startswith(
-                            'elbus://'):
-            if path.startswith('elbus://'):
+                            'rt://'):
+            if path.startswith('rt://'):
                 try:
-                    self.path, self.elbus_target = path[8:].rsplit(':', 1)
+                    self.path, self.busrt_target = path[8:].rsplit(':', 1)
                 except:
                     print(f'Invalid path: {path}')
                     raise

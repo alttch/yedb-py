@@ -179,7 +179,7 @@ def cli():
                 'https://') or db_dir.startswith('tcp://') or Path(
                     db_dir).is_socket() or db_dir.endswith(
                         '.sock') or db_dir.endswith(
-                            '.socket') or db_dir.startswith('elbus://'):
+                            '.socket') or db_dir.startswith('rt://'):
             options['timeout'] = 60
             # TODO variable timeout
             remote = True
